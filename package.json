@@ -1,0 +1,87 @@
+{
+  "name": "cline-maestro",
+  "displayName": "Cline Maestro",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages",
+    "Education",
+    "Snippets",
+    "Testing",
+    "Debuggers"
+  ],
+  "keywords": [
+    "cline",
+    "claude",
+    "dev",
+    "mcp",
+    "openrouter",
+    "coding",
+    "agent",
+    "autonomous",
+    "chatgpt",
+    "sonnet",
+    "ai",
+    "llama",
+    "roo code",
+    "roocode",
+    "kilocode"
+  ],
+  "extensionDependencies": [
+    "saoudrizwan.claude-dev"
+  ],
+  "activationEvents": [
+    "onLanguage",
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cline-maestro.helloWorld",
+        "title": "Hello World"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@roo-code/types": "^1.24.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "3.5.3",
+    "typescript": "^5.8.3"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
+  }
+}
