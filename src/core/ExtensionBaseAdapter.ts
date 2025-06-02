@@ -2,10 +2,10 @@ import * as vscode from "vscode";
 import { logger } from "../utils/logger";
 
 /**
- * Base extension adapter class providing common functionality for extension adapters
+ * Extension base adapter class providing common functionality for extension adapters
  * Handles extension discovery, activation, and common API operations
  */
-export abstract class BaseExtensionAdapter<TApi = any> {
+export abstract class ExtensionBaseAdapter<TApi = any> {
   protected extension: vscode.Extension<any> | undefined;
   protected api: TApi | undefined;
   protected isInitialized = false;

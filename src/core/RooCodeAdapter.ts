@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { logger } from "../utils/logger";
 import { RooCodeAPI, RooCodeSettings } from "@roo-code/types";
-import { BaseExtensionAdapter } from "./base-extension-adapter";
+import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
 
 export interface RooCodeTaskOptions {
   configuration?: RooCodeSettings;
@@ -14,7 +14,7 @@ export interface RooCodeTaskOptions {
  * Dedicated adapter for RooCode extension management
  * Handles RooCode-specific logic and API interactions
  */
-export class RooCodeAdapter extends BaseExtensionAdapter<RooCodeAPI> {
+export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
   constructor() {
     super();
   }

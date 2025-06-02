@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { ClineAdapter } from "../core/cline-adapter";
+import { ClineAdapter } from "../core/ClineAdapter";
 
 suite("ClineAdapter Tests", () => {
   let adapter: ClineAdapter;

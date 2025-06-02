@@ -1,10 +1,10 @@
-import * as vscode from "vscode";
+// import * as vscode from "vscode";
 import { EventEmitter } from "events";
-import { RooCodeAPI, RooCodeSettings } from "@roo-code/types";
+import { RooCodeSettings } from "@roo-code/types";
 import { v4 } from "uuid";
 import { logger } from "../utils/logger";
-import { ClineAdapter, ClineTaskOptions } from "./cline-adapter";
-import { RooCodeAdapter, RooCodeTaskOptions } from "./roo-code-adapter";
+import { ClineAdapter } from "./ClineAdapter";
+import { RooCodeAdapter } from "./RooCodeAdapter";
 
 export interface ExtensionStatus {
   isInstalled: boolean;

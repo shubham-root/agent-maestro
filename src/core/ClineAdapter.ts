@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import * as http from "http";
 import { logger } from "../utils/logger";
 import { ClineAPI } from "../types/cline";
-import { BaseExtensionAdapter } from "./base-extension-adapter";
+import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
 
 export interface ClineTaskOptions {
   task?: string;
@@ -15,7 +15,7 @@ export interface ClineTaskOptions {
  * Dedicated adapter for Cline extension management
  * Handles Cline-specific logic including test mode setup and API interactions
  */
-export class ClineAdapter extends BaseExtensionAdapter<ClineAPI> {
+export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
   constructor() {
     super();
   }
