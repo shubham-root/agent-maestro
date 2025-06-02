@@ -1,71 +1,430 @@
 # Cline Maestro
 
-This is the README for your extension "cline-maestro". After writing up a brief description, we recommend including the following sections.
+A unified controller for Cline and RooCode extensions that provides both VSCode extension API and local server access for external applications.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Unified API**: Single interface to interact with both Cline and RooCode extensions
+- **Auto-discovery**: Automatically detects and activates installed extensions
+- **Local Server**: HTTP server for external applications to use the controller
+- **Flexible Function Calling**: Universal method to call any extension-specific function
+- **VSCode Integration**: Seamless integration with VSCode commands and UI
 
-For example if there is an image subfolder under your extension project workspace:
+## Installation
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Install the required dependencies:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+   - [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) (Required)
+   - [RooCode](https://marketplace.visualstudio.com/items?itemName=rooveterinaryinc.roo-cline) (Optional)
 
-## Requirements
+2. Install Cline Maestro extension
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+## VSCode Commands
 
-## Extension Settings
+| Command                                | Description                                 |
+| -------------------------------------- | ------------------------------------------- |
+| `Cline Maestro: Start Local Server`    | Start the HTTP server for external access   |
+| `Cline Maestro: Stop Local Server`     | Stop the HTTP server                        |
+| `Cline Maestro: Get Extensions Status` | Show status of Cline and RooCode extensions |
+| `Cline Maestro: Start New Task`        | Start a new task with selected extension    |
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Core Controller API
 
-For example:
+### Initialization
 
-This extension contributes the following settings:
+```typescript
+import { ExtensionController } from "./core/controller";
 
-- `myExtension.enable`: Enable/disable this extension.
-- `myExtension.thing`: Set to `blah` to do something.
+const controller = new ExtensionController();
+await controller.initialize();
+```
 
-## Known Issues
+### Unified APIs
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+#### Start New Task
 
-## Release Notes
+```typescript
+// Start with Cline (default)
+await controller.startNewTask({
+  task: "Create a todo app",
+  images: ["data:image/png;base64,..."],
+});
 
-Users appreciate release notes as you update your extension.
+// Start with RooCode
+await controller.startNewTask(
+  {
+    task: "Create a todo app",
+    configuration: { apiProvider: "anthropic" },
+    newTab: true,
+  },
+  "roocode",
+);
+```
 
-### 1.0.0
+#### Send Message
 
-Initial release of ...
+```typescript
+// Send to Cline (default)
+await controller.sendMessage("Add error handling to the code");
 
-### 1.0.1
+// Send to RooCode
+await controller.sendMessage("Add error handling", [], "roocode");
+```
 
-Fixed issue #.
+#### Press Buttons
 
-### 1.1.0
+```typescript
+// Press primary button (usually "Continue" or "Approve")
+await controller.pressPrimaryButton("cline");
 
-Added features X, Y, and Z.
+// Press secondary button (usually "Reject" or "Cancel")
+await controller.pressSecondaryButton("roocode");
+```
 
----
+### Extension-Specific APIs
 
-## Following extension guidelines
+#### Cline-Specific Functions
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+```typescript
+// Get/Set custom instructions (Cline only)
+const instructions = await controller.getCustomInstructions();
+await controller.setCustomInstructions("Always use TypeScript");
+```
 
-- [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+#### Universal Function Calling
 
-## Working with Markdown
+```typescript
+// Call any RooCode function
+const taskStack = await controller.callExtensionFunction(
+  "roocode",
+  "getCurrentTaskStack",
+);
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+const profiles = await controller.callExtensionFunction(
+  "roocode",
+  "getProfiles",
+);
 
-- Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-- Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-- Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+// Call function with parameters
+await controller.callExtensionFunction("roocode", "createProfile", [
+  "myProfile",
+  { apiProvider: "anthropic" },
+  true,
+]);
 
-## For more information
+// Call any Cline function
+const clineInstructions = await controller.callExtensionFunction(
+  "cline",
+  "getCustomInstructions",
+);
+```
 
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+### Status and Utility Methods
 
-**Enjoy!**
+```typescript
+// Check if controller is ready
+const isReady = controller.isReady();
+
+// Check if specific extension is available
+const hasCline = controller.isExtensionAvailable("cline");
+const hasRooCode = controller.isExtensionAvailable("roocode");
+
+// Get extension status
+const status = controller.getExtensionStatus();
+console.log(status.cline.isActive); // true/false
+console.log(status.rooCode.version); // version string
+
+// Get available functions for any extension
+const clineFunctions = controller.getExtensionFunctions("cline");
+const rooCodeFunctions = controller.getExtensionFunctions("roocode");
+
+// Get direct API access (if needed)
+const clineApi = controller.getClineApi();
+const rooCodeApi = controller.getRooCodeApi();
+```
+
+## Local Server API
+
+Start the server from VSCode or programmatically:
+
+```typescript
+import { LocalServer } from "./server/local-server";
+
+const server = new LocalServer(controller, {
+  port: 3000,
+  host: "localhost",
+  enableCors: true,
+});
+
+await server.start();
+```
+
+### HTTP Endpoints
+
+#### GET `/status`
+
+Get controller and extensions status.
+
+**Response:**
+
+```json
+{
+  "ready": true,
+  "extensions": {
+    "cline": {
+      "isInstalled": true,
+      "isActive": true,
+      "version": "1.0.0"
+    },
+    "rooCode": {
+      "isInstalled": true,
+      "isActive": true,
+      "version": "2.0.0"
+    }
+  }
+}
+```
+
+#### POST `/start-task`
+
+Start a new task.
+
+**Request:**
+
+```json
+{
+  "extensionType": "cline",
+  "options": {
+    "task": "Create a React component",
+    "images": ["data:image/png;base64,..."],
+    "configuration": {},
+    "newTab": false
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "taskId": "task-123"
+}
+```
+
+#### POST `/send-message`
+
+Send message to current task.
+
+**Request:**
+
+```json
+{
+  "extensionType": "roocode",
+  "message": "Add error handling",
+  "images": []
+}
+```
+
+#### POST `/press-primary`
+
+Press primary button.
+
+**Request:**
+
+```json
+{
+  "extensionType": "cline"
+}
+```
+
+#### POST `/press-secondary`
+
+Press secondary button.
+
+**Request:**
+
+```json
+{
+  "extensionType": "roocode"
+}
+```
+
+#### GET/POST `/custom-instructions`
+
+Get or set custom instructions (Cline only).
+
+**GET Response:**
+
+```json
+{
+  "instructions": "Always use TypeScript"
+}
+```
+
+**POST Request:**
+
+```json
+{
+  "instructions": "Always use TypeScript and add comprehensive error handling"
+}
+```
+
+#### POST `/call-function`
+
+Call any extension function.
+
+**Request:**
+
+```json
+{
+  "extensionType": "roocode",
+  "functionName": "createProfile",
+  "payload": ["myProfile", { "apiProvider": "anthropic" }, true]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": "profile-id-123"
+}
+```
+
+#### GET `/functions?extension=cline`
+
+Get available functions for an extension.
+
+**Response:**
+
+```json
+{
+  "functions": [
+    "startNewTask",
+    "sendMessage",
+    "pressPrimaryButton",
+    "pressSecondaryButton",
+    "getCustomInstructions",
+    "setCustomInstructions"
+  ]
+}
+```
+
+## Examples
+
+### External Application Integration
+
+```javascript
+// Using fetch to interact with the local server
+const baseUrl = "http://localhost:3000";
+
+// Check status
+const status = await fetch(`${baseUrl}/status`).then((r) => r.json());
+console.log("Extensions ready:", status.ready);
+
+// Start a task
+const response = await fetch(`${baseUrl}/start-task`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    extensionType: "cline",
+    options: {
+      task: "Create a simple web server in Node.js",
+    },
+  }),
+});
+
+const result = await response.json();
+console.log("Task started:", result.taskId);
+
+// Send follow-up message
+await fetch(`${baseUrl}/send-message`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    extensionType: "cline",
+    message: "Make sure to include error handling",
+  }),
+});
+```
+
+### RooCode Profile Management
+
+```typescript
+// Create a new profile
+await controller.callExtensionFunction("roocode", "createProfile", [
+  "production",
+  {
+    apiProvider: "anthropic",
+    apiKey: "your-key-here",
+    apiModelId: "claude-3-5-sonnet-20241022",
+  },
+  true,
+]);
+
+// Switch to the profile
+await controller.callExtensionFunction(
+  "roocode",
+  "setActiveProfile",
+  "production",
+);
+
+// Get current configuration
+const config = await controller.callExtensionFunction(
+  "roocode",
+  "getConfiguration",
+);
+```
+
+## Architecture
+
+The Cline Maestro consists of three main components:
+
+1. **ExtensionController** (`src/core/controller.ts`): Core logic for managing extensions
+2. **LocalServer** (`src/server/local-server.ts`): HTTP server for external access
+3. **VSCode Extension** (`src/extension.ts`): VSCode integration and commands
+
+## Error Handling
+
+All methods throw descriptive errors that can be caught and handled:
+
+```typescript
+try {
+  await controller.startNewTask({ task: "test" }, "roocode");
+} catch (error) {
+  if (error.message.includes("RooCode API not available")) {
+    console.log("RooCode extension is not installed or active");
+  }
+}
+```
+
+## Events
+
+The controller emits events for monitoring:
+
+```typescript
+controller.on("initialized", () => {
+  console.log("Controller ready");
+});
+
+controller.on("clineActivated", (api) => {
+  console.log("Cline extension activated");
+});
+
+controller.on("rooCodeActivated", (api) => {
+  console.log("RooCode extension activated");
+});
+```
+
+## Development
+
+1. Clone the repository
+2. Install dependencies: `pnpm install`
+3. Build: `pnpm run compile`
+4. Test in VSCode: Press F5 to launch Extension Development Host
+
+## License
+
+MIT License - see LICENSE file for details.

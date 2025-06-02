@@ -31,7 +31,8 @@
     "llama",
     "roo code",
     "roocode",
-    "kilocode"
+    "kilocode",
+    "vibe coding"
   ],
   "extensionDependencies": [
     "saoudrizwan.claude-dev"
@@ -44,8 +45,24 @@
   "contributes": {
     "commands": [
       {
-        "command": "cline-maestro.helloWorld",
-        "title": "Hello World"
+        "command": "cline-maestro.startServer",
+        "title": "Start Local Server",
+        "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.stopServer",
+        "title": "Stop Local Server",
+        "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.getStatus",
+        "title": "Get Extensions Status",
+        "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.startTask",
+        "title": "Start New Task",
+        "category": "Cline Maestro"
       }
     ]
   },
@@ -83,5 +100,8 @@
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0"
   }
 }
