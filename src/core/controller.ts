@@ -32,7 +32,7 @@ export enum ExtensionType {
 export class ExtensionController extends EventEmitter {
   private clineAdapter: ClineAdapter;
   private rooCodeAdapter: RooCodeAdapter;
-  private isInitialized = false;
+  public isInitialized = false;
 
   constructor() {
     super();
@@ -49,35 +49,8 @@ export class ExtensionController extends EventEmitter {
       return;
     }
 
-    try {
-      await this.discoverExtensions();
-      await this.activateExtensions();
-
-      this.isInitialized = true;
-      logger.info("Extension controller initialized successfully");
-    } catch (error) {
-      logger.error("Failed to initialize controller:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Discover installed extensions
-   */
-  private async discoverExtensions(): Promise<void> {
-    // Initialize Cline adapter (which handles Cline discovery internally)
-    try {
-      await this.clineAdapter.initialize();
-    } catch (error) {
-      logger.warn("Cline extension not available:", error);
-    }
-
-    // Initialize RooCode adapter (which handles RooCode discovery internally)
-    try {
-      await this.rooCodeAdapter.initialize();
-    } catch (error) {
-      logger.warn("RooCode extension not available:", error);
-    }
+    await this.clineAdapter.initialize();
+    await this.rooCodeAdapter.initialize();
 
     if (
       !this.clineAdapter.isInstalled() &&
@@ -87,14 +60,9 @@ export class ExtensionController extends EventEmitter {
         "No compatible extensions found. Please install Cline or RooCode extension.",
       );
     }
-  }
 
-  /**
-   * Activate discovered extensions automatically
-   */
-  private async activateExtensions(): Promise<void> {
-    // Both Cline and RooCode are already initialized in discoverExtensions
-    // No additional activation needed as adapters handle this internally
+    this.isInitialized = true;
+    logger.info("Extension controller initialized successfully");
   }
 
   /**
@@ -104,36 +72,17 @@ export class ExtensionController extends EventEmitter {
     return {
       cline: {
         isInstalled: this.clineAdapter.isInstalled(),
-        isActive: this.clineAdapter.isActive(),
+        isActive: this.clineAdapter.isActive,
         version: this.clineAdapter.getVersion(),
         api: this.clineAdapter.getApi(),
       },
       rooCode: {
         isInstalled: this.rooCodeAdapter.isInstalled(),
-        isActive: this.rooCodeAdapter.isActive(),
+        isActive: this.rooCodeAdapter.isActive,
         version: this.rooCodeAdapter.getVersion(),
         api: this.rooCodeAdapter.getApi(),
       },
     };
-  }
-
-  /**
-   * Get API for specified extension type
-   */
-  private getApi(extensionType: ExtensionType): any {
-    if (extensionType === ExtensionType.CLINE) {
-      const api = this.clineAdapter.getApi();
-      if (!api) {
-        throw new Error("Cline API not available");
-      }
-      return api;
-    } else {
-      const api = this.rooCodeAdapter.getApi();
-      if (!api) {
-        throw new Error("RooCode API not available");
-      }
-      return api;
-    }
   }
 
   /**
@@ -225,43 +174,12 @@ export class ExtensionController extends EventEmitter {
   }
 
   /**
-   * Universal method to call any function on any extension API
-   * @param extensionType - The extension to call the function on
-   * @param functionName - The name of the API function to call
-   * @param payload - The arguments to pass to the function
-   * @returns The result of the function call
-   */
-  async callExtensionFunction(
-    extensionType: ExtensionType,
-    functionName: string,
-    payload?: any,
-  ): Promise<any> {
-    logger.info(`Calling ${extensionType} function: ${functionName}`);
-
-    if (extensionType === ExtensionType.CLINE) {
-      return await this.clineAdapter.callFunction(functionName, payload);
-    } else {
-      return await this.rooCodeAdapter.callFunction(functionName, payload);
-    }
-  }
-
-  /**
-   * Check if controller is ready
-   */
-  isReady(): boolean {
-    return (
-      this.isInitialized &&
-      (this.clineAdapter.isReady() || this.rooCodeAdapter.isReady())
-    );
-  }
-
-  /**
    * Check if specific extension is available
    */
   isExtensionAvailable(extensionType: ExtensionType): boolean {
     return extensionType === ExtensionType.CLINE
-      ? this.clineAdapter.isReady()
-      : this.rooCodeAdapter.isReady();
+      ? this.clineAdapter.isActive
+      : this.rooCodeAdapter.isActive;
   }
 
   /**

@@ -1,10 +1,8 @@
 import * as vscode from "vscode";
 import { logger } from "./utils/logger";
 import { ExtensionController, ExtensionType } from "./core/controller";
-import { LocalServer } from "./server/local-server";
 
 let controller: ExtensionController;
-let localServer: LocalServer;
 
 export async function activate(context: vscode.ExtensionContext) {
   // Debugging usage
@@ -23,47 +21,8 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
-  // Initialize local server
-  localServer = new LocalServer(controller);
-
   // Register commands
   const disposables = [
-    vscode.commands.registerCommand("cline-maestro.startServer", async () => {
-      try {
-        if (localServer.isRunning()) {
-          vscode.window.showWarningMessage("Local server is already running");
-          return;
-        }
-
-        await localServer.start();
-        vscode.window.showInformationMessage(
-          `Local server started at ${localServer.getUrl()}`,
-        );
-      } catch (error) {
-        logger.error("Failed to start local server:", error);
-        vscode.window.showErrorMessage(
-          `Failed to start local server: ${(error as Error).message}`,
-        );
-      }
-    }),
-
-    vscode.commands.registerCommand("cline-maestro.stopServer", async () => {
-      try {
-        if (!localServer.isRunning()) {
-          vscode.window.showWarningMessage("Local server is not running");
-          return;
-        }
-
-        await localServer.stop();
-        vscode.window.showInformationMessage("Local server stopped");
-      } catch (error) {
-        logger.error("Failed to stop local server:", error);
-        vscode.window.showErrorMessage(
-          `Failed to stop local server: ${(error as Error).message}`,
-        );
-      }
-    }),
-
     vscode.commands.registerCommand("cline-maestro.getStatus", () => {
       const status = controller.getExtensionStatus();
       const message =
@@ -112,17 +71,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(...disposables);
 
+  logger.info(controller.getClineFunctions().join("\n"));
+  logger.info(controller.getRooCodeFunctions().join("\n"));
+
   return controller;
 }
 
 // This method is called when your extension is deactivated
 export async function deactivate() {
   try {
-    if (localServer?.isRunning()) {
-      await localServer.stop();
-      logger.info("Local server stopped during deactivation");
-    }
-
     if (controller) {
       await controller.dispose();
       logger.info("Extension controller disposed");

@@ -158,11 +158,4 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
     logger.info(`Setting RooCode active profile: ${name}`);
     return await this.api.setActiveProfile(name);
   }
-
-  /**
-   * Check if adapter is ready
-   */
-  isReady(): boolean {
-    return this.isInitialized && !!this.api && this.api.isReady();
-  }
 }

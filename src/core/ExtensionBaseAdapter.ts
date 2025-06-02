@@ -8,7 +8,7 @@ import { logger } from "../utils/logger";
 export abstract class ExtensionBaseAdapter<TApi = any> {
   protected extension: vscode.Extension<any> | undefined;
   protected api: TApi | undefined;
-  protected isInitialized = false;
+  public isActive = false;
 
   constructor() {}
 
@@ -42,8 +42,8 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
    * Initialize the adapter
    */
   async initialize(): Promise<void> {
-    if (this.isInitialized) {
-      logger.info(`${this.getDisplayName()} already initialized`);
+    if (this.isActive) {
+      logger.info(`${this.getDisplayName()} already activated`);
       return;
     }
 
@@ -51,11 +51,11 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
       await this.discoverExtension();
       await this.activateExtension();
 
-      this.isInitialized = true;
-      logger.info(`${this.getDisplayName()} initialized successfully`);
+      this.isActive = true;
+      logger.info(`${this.getDisplayName()} activated successfully`);
     } catch (error) {
       logger.error(`Failed to initialize ${this.getDisplayName()}:`, error);
-      throw error;
+      // throw error;
     }
   }
 
@@ -141,42 +141,6 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
   }
 
   /**
-   * Call any function on the API
-   */
-  async callFunction(functionName: string, payload?: any): Promise<any> {
-    if (!this.api) {
-      throw new Error(`${this.getDisplayName()} API not available`);
-    }
-
-    const apiObj = this.api as any;
-
-    if (typeof apiObj[functionName] !== "function") {
-      throw new Error(
-        `Function '${functionName}' not found in ${this.getDisplayName()} API`,
-      );
-    }
-
-    logger.info(`Calling ${this.getDisplayName()} function: ${functionName}`);
-
-    try {
-      // Handle different function signatures
-      if (payload === undefined) {
-        return await apiObj[functionName]();
-      } else if (Array.isArray(payload)) {
-        return await apiObj[functionName](...payload);
-      } else {
-        return await apiObj[functionName](payload);
-      }
-    } catch (error) {
-      logger.error(
-        `Error calling ${this.getDisplayName()} function '${functionName}':`,
-        error,
-      );
-      throw error;
-    }
-  }
-
-  /**
    * Get available functions
    */
   getAvailableFunctions(): string[] {
@@ -194,24 +158,10 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
   }
 
   /**
-   * Check if adapter is ready
-   */
-  isReady(): boolean {
-    return this.isInitialized && !!this.api;
-  }
-
-  /**
    * Check if extension is installed
    */
   isInstalled(): boolean {
     return !!this.extension;
-  }
-
-  /**
-   * Check if extension is active
-   */
-  isActive(): boolean {
-    return !!this.api;
   }
 
   /**
@@ -233,6 +183,6 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
    */
   async dispose(): Promise<void> {
     this.api = undefined;
-    this.isInitialized = false;
+    this.isActive = false;
   }
 }

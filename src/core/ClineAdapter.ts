@@ -179,7 +179,7 @@ export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
    */
   async dispose(): Promise<void> {
     this.api = undefined;
-    this.isInitialized = false;
+    this.isActive = false;
     await this.disableTestMode();
   }
 }
