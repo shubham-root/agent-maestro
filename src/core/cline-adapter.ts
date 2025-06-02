@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import * as http from "http";
 import { logger } from "../utils/logger";
 import { ClineAPI } from "../types/cline";
+import { BaseExtensionAdapter } from "./base-extension-adapter";
 
 export interface ClineTaskOptions {
   task?: string;
@@ -14,82 +15,44 @@ export interface ClineTaskOptions {
  * Dedicated adapter for Cline extension management
  * Handles Cline-specific logic including test mode setup and API interactions
  */
-export class ClineAdapter {
-  private extension: vscode.Extension<any> | undefined;
-  private api: ClineAPI | undefined;
-  private isInitialized = false;
-
-  constructor() {}
-
-  /**
-   * Initialize the Cline adapter
-   */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) {
-      logger.info("ClineAdapter already initialized");
-      return;
-    }
-
-    try {
-      await this.discoverExtension();
-      await this.activateExtension();
-
-      this.isInitialized = true;
-      logger.info("ClineAdapter initialized successfully");
-    } catch (error) {
-      logger.error("Failed to initialize ClineAdapter:", error);
-      throw error;
-    }
+export class ClineAdapter extends BaseExtensionAdapter<ClineAPI> {
+  constructor() {
+    super();
   }
 
   /**
-   * Discover Cline extension
+   * Get the extension ID to discover
    */
-  private async discoverExtension(): Promise<void> {
-    this.extension = vscode.extensions.getExtension("saoudrizwan.claude-dev");
-
-    if (this.extension) {
-      logger.info(
-        `Found Cline extension v${this.extension.packageJSON.version}`,
-      );
-    } else {
-      throw new Error(
-        "Cline extension not found. Please install Cline extension.",
-      );
-    }
+  protected getExtensionId(): string {
+    return "saoudrizwan.claude-dev";
   }
 
   /**
-   * Activate Cline extension
+   * Get the display name for logging
    */
-  private async activateExtension(): Promise<void> {
-    if (!this.extension) {
-      throw new Error("Cline extension not discovered");
-    }
+  protected getDisplayName(): string {
+    return "ClineAdapter";
+  }
 
-    // Enable test mode before activation
+  /**
+   * Perform pre-activation setup
+   */
+  protected async preActivation(): Promise<void> {
     await this.enableTestMode();
+  }
 
-    if (!this.extension.isActive) {
-      try {
-        this.api = await this.extension.activate();
-
-        // Verify test mode is working
-        const isTestModeEnabled = await this.isTestModeEnabled();
-        if (isTestModeEnabled) {
-          logger.info("Cline extension activated with test mode enabled");
-        } else {
-          logger.warn(
-            "Cline test mode is not enabled. Please ensure localhost:9876 is running.",
-          );
-        }
-      } catch (error) {
-        logger.error("Failed to activate Cline extension:", error);
-        throw error;
-      }
+  /**
+   * Perform post-activation setup
+   */
+  protected async postActivation(): Promise<void> {
+    // Verify test mode is working
+    const isTestModeEnabled = await this.isTestModeEnabled();
+    if (isTestModeEnabled) {
+      logger.info("Cline extension activated with test mode enabled");
     } else {
-      this.api = this.extension.exports;
-      logger.info("Cline extension already active");
+      logger.warn(
+        "Cline test mode is not enabled. Please ensure localhost:9876 is running.",
+      );
     }
   }
 
@@ -190,42 +153,6 @@ export class ClineAdapter {
   }
 
   /**
-   * Send message to current task
-   */
-  async sendMessage(message?: string, images?: string[]): Promise<void> {
-    if (!this.api) {
-      throw new Error("Cline API not available");
-    }
-
-    logger.info("Sending message to Cline");
-    await this.api.sendMessage(message, images);
-  }
-
-  /**
-   * Press primary button
-   */
-  async pressPrimaryButton(): Promise<void> {
-    if (!this.api) {
-      throw new Error("Cline API not available");
-    }
-
-    logger.info("Pressing Cline primary button");
-    await this.api.pressPrimaryButton();
-  }
-
-  /**
-   * Press secondary button
-   */
-  async pressSecondaryButton(): Promise<void> {
-    if (!this.api) {
-      throw new Error("Cline API not available");
-    }
-
-    logger.info("Pressing Cline secondary button");
-    await this.api.pressSecondaryButton();
-  }
-
-  /**
    * Get custom instructions
    */
   async getCustomInstructions(): Promise<string | undefined> {
@@ -245,89 +172,6 @@ export class ClineAdapter {
     }
 
     await this.api.setCustomInstructions(value);
-  }
-
-  /**
-   * Call any function on the Cline API
-   */
-  async callFunction(functionName: string, payload?: any): Promise<any> {
-    if (!this.api) {
-      throw new Error("Cline API not available");
-    }
-
-    const apiObj = this.api as any;
-
-    if (typeof apiObj[functionName] !== "function") {
-      throw new Error(`Function '${functionName}' not found in Cline API`);
-    }
-
-    logger.info(`Calling Cline function: ${functionName}`);
-
-    try {
-      // Handle different function signatures
-      if (payload === undefined) {
-        return await apiObj[functionName]();
-      } else if (Array.isArray(payload)) {
-        return await apiObj[functionName](...payload);
-      } else {
-        return await apiObj[functionName](payload);
-      }
-    } catch (error) {
-      logger.error(`Error calling Cline function '${functionName}':`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get available functions
-   */
-  getAvailableFunctions(): string[] {
-    if (!this.api) {
-      return [];
-    }
-
-    const apiObj = this.api as any;
-    return Object.getOwnPropertyNames(Object.getPrototypeOf(apiObj))
-      .concat(Object.getOwnPropertyNames(apiObj))
-      .filter(
-        (name) => typeof apiObj[name] === "function" && name !== "constructor",
-      )
-      .sort();
-  }
-
-  /**
-   * Check if adapter is ready
-   */
-  isReady(): boolean {
-    return this.isInitialized && !!this.api;
-  }
-
-  /**
-   * Check if extension is installed
-   */
-  isInstalled(): boolean {
-    return !!this.extension;
-  }
-
-  /**
-   * Check if extension is active
-   */
-  isActive(): boolean {
-    return !!this.api;
-  }
-
-  /**
-   * Get extension version
-   */
-  getVersion(): string | undefined {
-    return this.extension?.packageJSON.version;
-  }
-
-  /**
-   * Get the API instance
-   */
-  getApi(): ClineAPI | undefined {
-    return this.api;
   }
 
   /**
