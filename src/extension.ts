@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { logger } from "./utils/logger";
-import { ExtensionController } from "./core/controller";
+import { ExtensionController, ExtensionType } from "./core/controller";
 import { LocalServer } from "./server/local-server";
 
 let controller: ExtensionController;
@@ -84,18 +84,22 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const extensionType = (await vscode.window.showQuickPick(
-          ["cline", "roocode"],
+        const extensionTypeString = await vscode.window.showQuickPick(
+          ["Cline", "Roo Code"],
           { placeHolder: "Select extension to use" },
-        )) as "cline" | "roocode" | undefined;
+        );
 
-        if (!extensionType) {
+        if (!extensionTypeString) {
           return;
         }
 
+        const extensionType =
+          extensionTypeString === "Cline"
+            ? ExtensionType.CLINE
+            : ExtensionType.ROO_CODE;
         const taskId = await controller.startNewTask({ task }, extensionType);
         vscode.window.showInformationMessage(
-          `Task started with ${extensionType}${taskId && taskId !== "cline-task" ? ` (ID: ${taskId})` : ""}`,
+          `Task started with ${extensionType} (ID: ${taskId})`,
         );
       } catch (error) {
         logger.error("Failed to start task:", error);
@@ -108,18 +112,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(...disposables);
 
-  // Setup event listeners
-  controller.on("initialized", () => {
-    logger.info("Controller initialized");
-  });
-
-  controller.on("clineActivated", () => {
-    logger.info("Cline extension activated");
-  });
-
-  controller.on("rooCodeActivated", () => {
-    logger.info("RooCode extension activated");
-  });
+  return controller;
 }
 
 // This method is called when your extension is deactivated

@@ -168,7 +168,7 @@ export class LocalServer {
     }
 
     const body = await this.parseBody(req);
-    const { options = {}, extensionType = "cline" } = body as {
+    const { options = {}, extensionType = ExtensionType.CLINE } = body as {
       options?: UnifiedTaskOptions;
       extensionType?: ExtensionType;
     };
@@ -197,7 +197,7 @@ export class LocalServer {
     const {
       message,
       images,
-      extensionType = "cline",
+      extensionType = ExtensionType.CLINE,
     } = body as {
       message?: string;
       images?: string[];
@@ -225,7 +225,7 @@ export class LocalServer {
     }
 
     const body = await this.parseBody(req);
-    const { extensionType = "cline" } = body as {
+    const { extensionType = ExtensionType.CLINE } = body as {
       extensionType?: ExtensionType;
     };
 
@@ -250,7 +250,7 @@ export class LocalServer {
     }
 
     const body = await this.parseBody(req);
-    const { extensionType = "cline" } = body as {
+    const { extensionType = ExtensionType.CLINE } = body as {
       extensionType?: ExtensionType;
     };
 

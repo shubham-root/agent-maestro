@@ -34,9 +34,7 @@
     "kilocode",
     "vibe coding"
   ],
-  "extensionDependencies": [
-    "saoudrizwan.claude-dev"
-  ],
+  "extensionDependencies": [],
   "activationEvents": [
     "onLanguage",
     "onStartupFinished"
