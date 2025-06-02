@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 import { RooCodeAPI, RooCodeSettings } from "@roo-code/types";
 import { v4 } from "uuid";
 import { logger } from "../utils/logger";
-import { ClineAPI } from "../types/cline";
+import { ClineAdapter, ClineTaskOptions } from "./cline-adapter";
 
 export interface ExtensionStatus {
   isInstalled: boolean;
@@ -29,14 +29,14 @@ export enum ExtensionType {
  * Provides unified API access and can be used by both VSCode extension and local server
  */
 export class ExtensionController extends EventEmitter {
-  private clineExtension: vscode.Extension<any> | undefined;
+  private clineAdapter: ClineAdapter;
   private rooCodeExtension: vscode.Extension<any> | undefined;
-  private clineApi: ClineAPI | undefined;
   private rooCodeApi: RooCodeAPI | undefined;
   private isInitialized = false;
 
   constructor() {
     super();
+    this.clineAdapter = new ClineAdapter();
   }
 
   /**
@@ -64,14 +64,11 @@ export class ExtensionController extends EventEmitter {
    * Discover installed extensions
    */
   private async discoverExtensions(): Promise<void> {
-    // Discover Cline extension
-    this.clineExtension = vscode.extensions.getExtension(
-      "saoudrizwan.claude-dev",
-    );
-    if (this.clineExtension) {
-      logger.info(
-        `Found Cline extension v${this.clineExtension.packageJSON.version}`,
-      );
+    // Initialize Cline adapter (which handles Cline discovery internally)
+    try {
+      await this.clineAdapter.initialize();
+    } catch (error) {
+      logger.warn("Cline extension not available:", error);
     }
 
     // Discover RooCode extension
@@ -84,7 +81,7 @@ export class ExtensionController extends EventEmitter {
       );
     }
 
-    if (!this.clineExtension && !this.rooCodeExtension) {
+    if (!this.clineAdapter.isInstalled() && !this.rooCodeExtension) {
       throw new Error(
         "No compatible extensions found. Please install Cline or RooCode extension.",
       );
@@ -97,20 +94,7 @@ export class ExtensionController extends EventEmitter {
   private async activateExtensions(): Promise<void> {
     const activationPromises: Promise<void>[] = [];
 
-    if (this.clineExtension && !this.clineExtension.isActive) {
-      const clineActivation = Promise.resolve(this.clineExtension.activate())
-        .then((api) => {
-          this.clineApi = api;
-          logger.info("Cline extension activated");
-        })
-        .catch((error: any) => {
-          logger.error("Failed to activate Cline extension:", error);
-        });
-      activationPromises.push(clineActivation);
-    } else if (this.clineExtension?.isActive) {
-      this.clineApi = this.clineExtension.exports;
-      logger.info("Cline extension already active");
-    }
+    // Cline is already initialized in discoverExtensions
 
     if (this.rooCodeExtension && !this.rooCodeExtension.isActive) {
       const rooCodeActivation = Promise.resolve(
@@ -138,10 +122,10 @@ export class ExtensionController extends EventEmitter {
   getExtensionStatus(): { cline: ExtensionStatus; rooCode: ExtensionStatus } {
     return {
       cline: {
-        isInstalled: !!this.clineExtension,
-        isActive: !!this.clineApi,
-        version: this.clineExtension?.packageJSON.version,
-        api: this.clineApi,
+        isInstalled: this.clineAdapter.isInstalled(),
+        isActive: this.clineAdapter.isActive(),
+        version: this.clineAdapter.getVersion(),
+        api: this.clineAdapter.getApi(),
       },
       rooCode: {
         isInstalled: !!this.rooCodeExtension,
@@ -155,12 +139,13 @@ export class ExtensionController extends EventEmitter {
   /**
    * Get API for specified extension type
    */
-  private getApi(extensionType: ExtensionType): ClineAPI | RooCodeAPI {
+  private getApi(extensionType: ExtensionType): any {
     if (extensionType === ExtensionType.CLINE) {
-      if (!this.clineApi) {
+      const api = this.clineAdapter.getApi();
+      if (!api) {
         throw new Error("Cline API not available");
       }
-      return this.clineApi;
+      return api;
     } else {
       if (!this.rooCodeApi) {
         throw new Error("RooCode API not available");
@@ -178,15 +163,17 @@ export class ExtensionController extends EventEmitter {
     options: UnifiedTaskOptions = {},
     extensionType = ExtensionType.CLINE,
   ): Promise<string | void> {
-    const api = this.getApi(extensionType);
-
     logger.info(`Starting new task with ${extensionType}`);
 
     if (extensionType === ExtensionType.CLINE) {
-      await (api as ClineAPI).startNewTask(options.task, options.images);
+      await this.clineAdapter.startNewTask({
+        task: options.task,
+        images: options.images,
+      });
       return v4(); // Cline doesn't return task ID
     } else {
-      return await (api as RooCodeAPI).startNewTask({
+      const api = this.getApi(extensionType) as RooCodeAPI;
+      return await api.startNewTask({
         configuration: options.configuration,
         text: options.task,
         images: options.images,
@@ -206,10 +193,14 @@ export class ExtensionController extends EventEmitter {
     images?: string[],
     extensionType = ExtensionType.CLINE,
   ): Promise<void> {
-    const api = this.getApi(extensionType);
-
     logger.info(`Sending message with ${extensionType}`);
-    await api.sendMessage(message, images);
+
+    if (extensionType === ExtensionType.CLINE) {
+      await this.clineAdapter.sendMessage(message, images);
+    } else {
+      const api = this.getApi(extensionType);
+      await api.sendMessage(message, images);
+    }
   }
 
   /**
@@ -217,10 +208,14 @@ export class ExtensionController extends EventEmitter {
    * @param extensionType Which extension to use (defaults to "cline")
    */
   async pressPrimaryButton(extensionType = ExtensionType.CLINE): Promise<void> {
-    const api = this.getApi(extensionType);
-
     logger.info(`Pressing primary button with ${extensionType}`);
-    await api.pressPrimaryButton();
+
+    if (extensionType === ExtensionType.CLINE) {
+      await this.clineAdapter.pressPrimaryButton();
+    } else {
+      const api = this.getApi(extensionType);
+      await api.pressPrimaryButton();
+    }
   }
 
   /**
@@ -230,27 +225,25 @@ export class ExtensionController extends EventEmitter {
   async pressSecondaryButton(
     extensionType = ExtensionType.CLINE,
   ): Promise<void> {
-    const api = this.getApi(extensionType);
-
     logger.info(`Pressing secondary button with ${extensionType}`);
-    await api.pressSecondaryButton();
+
+    if (extensionType === ExtensionType.CLINE) {
+      await this.clineAdapter.pressSecondaryButton();
+    } else {
+      const api = this.getApi(extensionType);
+      await api.pressSecondaryButton();
+    }
   }
 
   /**
    * Cline-specific: Get/Set custom instructions
    */
   async getCustomInstructions(): Promise<string | undefined> {
-    if (!this.clineApi) {
-      throw new Error("Cline API not available");
-    }
-    return await this.clineApi.getCustomInstructions();
+    return await this.clineAdapter.getCustomInstructions();
   }
 
   async setCustomInstructions(value: string): Promise<void> {
-    if (!this.clineApi) {
-      throw new Error("Cline API not available");
-    }
-    await this.clineApi.setCustomInstructions(value);
+    await this.clineAdapter.setCustomInstructions(value);
   }
 
   /**
@@ -265,31 +258,35 @@ export class ExtensionController extends EventEmitter {
     functionName: string,
     payload?: any,
   ): Promise<any> {
-    const api = this.getApi(extensionType) as any;
-
-    if (typeof api[functionName] !== "function") {
-      throw new Error(
-        `Function '${functionName}' not found in ${extensionType} API`,
-      );
-    }
-
     logger.info(`Calling ${extensionType} function: ${functionName}`);
 
-    try {
-      // Handle different function signatures
-      if (payload === undefined) {
-        return await api[functionName]();
-      } else if (Array.isArray(payload)) {
-        return await api[functionName](...payload);
-      } else {
-        return await api[functionName](payload);
+    if (extensionType === ExtensionType.CLINE) {
+      return await this.clineAdapter.callFunction(functionName, payload);
+    } else {
+      const api = this.getApi(extensionType) as any;
+
+      if (typeof api[functionName] !== "function") {
+        throw new Error(
+          `Function '${functionName}' not found in ${extensionType} API`,
+        );
       }
-    } catch (error) {
-      logger.error(
-        `Error calling ${extensionType} function '${functionName}':`,
-        error,
-      );
-      throw error;
+
+      try {
+        // Handle different function signatures
+        if (payload === undefined) {
+          return await api[functionName]();
+        } else if (Array.isArray(payload)) {
+          return await api[functionName](...payload);
+        } else {
+          return await api[functionName](payload);
+        }
+      } catch (error) {
+        logger.error(
+          `Error calling ${extensionType} function '${functionName}':`,
+          error,
+        );
+        throw error;
+      }
     }
   }
 
@@ -297,7 +294,9 @@ export class ExtensionController extends EventEmitter {
    * Check if controller is ready
    */
   isReady(): boolean {
-    return this.isInitialized && (!!this.clineApi || !!this.rooCodeApi);
+    return (
+      this.isInitialized && (this.clineAdapter.isReady() || !!this.rooCodeApi)
+    );
   }
 
   /**
@@ -305,7 +304,7 @@ export class ExtensionController extends EventEmitter {
    */
   isExtensionAvailable(extensionType: ExtensionType): boolean {
     return extensionType === ExtensionType.CLINE
-      ? !!this.clineApi
+      ? this.clineAdapter.isReady()
       : !!this.rooCodeApi;
   }
 
@@ -314,20 +313,23 @@ export class ExtensionController extends EventEmitter {
    * @param extensionType The extension to get functions for
    */
   getExtensionFunctions(extensionType: ExtensionType): string[] {
-    const api =
-      extensionType === ExtensionType.CLINE ? this.clineApi : this.rooCodeApi;
+    if (extensionType === ExtensionType.CLINE) {
+      return this.clineAdapter.getAvailableFunctions();
+    } else {
+      const api = this.rooCodeApi;
+      if (!api) {
+        return [];
+      }
 
-    if (!api) {
-      return [];
+      const apiObj = api as any;
+      return Object.getOwnPropertyNames(Object.getPrototypeOf(apiObj))
+        .concat(Object.getOwnPropertyNames(apiObj))
+        .filter(
+          (name) =>
+            typeof apiObj[name] === "function" && name !== "constructor",
+        )
+        .sort();
     }
-
-    const apiObj = api as any;
-    return Object.getOwnPropertyNames(Object.getPrototypeOf(apiObj))
-      .concat(Object.getOwnPropertyNames(apiObj))
-      .filter(
-        (name) => typeof apiObj[name] === "function" && name !== "constructor",
-      )
-      .sort();
   }
 
   /**
@@ -347,10 +349,11 @@ export class ExtensionController extends EventEmitter {
   /**
    * Cleanup resources
    */
-  dispose(): void {
+  async dispose(): Promise<void> {
     this.removeAllListeners();
-    this.clineApi = undefined;
     this.rooCodeApi = undefined;
     this.isInitialized = false;
+
+    await this.clineAdapter.dispose();
   }
 }

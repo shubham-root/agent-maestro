@@ -124,7 +124,7 @@ export async function deactivate() {
     }
 
     if (controller) {
-      controller.dispose();
+      await controller.dispose();
       logger.info("Extension controller disposed");
     }
   } catch (error) {
