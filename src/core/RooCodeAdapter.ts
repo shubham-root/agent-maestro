@@ -3,6 +3,7 @@ import { logger } from "../utils/logger";
 import { RooCodeAPI, RooCodeSettings } from "@roo-code/types";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
 
+// [TODO] Will start Roo Code IPC work after Cline adapter finished
 export interface RooCodeTaskOptions {
   configuration?: RooCodeSettings;
   text?: string;

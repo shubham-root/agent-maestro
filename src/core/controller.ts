@@ -14,7 +14,7 @@ export interface ExtensionStatus {
 }
 
 export interface UnifiedTaskOptions {
-  task?: string;
+  task: string;
   images?: string[];
   configuration?: RooCodeSettings;
   newTab?: boolean;
@@ -94,17 +94,18 @@ export class ExtensionController extends EventEmitter {
    * @param extensionType Which extension to use (defaults to "cline")
    */
   async startNewTask(
-    options: UnifiedTaskOptions = {},
+    options: UnifiedTaskOptions,
     extensionType = ExtensionType.CLINE,
   ): Promise<string | void> {
     logger.info(`Starting new task with ${extensionType}`);
 
     if (extensionType === ExtensionType.CLINE) {
-      await this.clineAdapter.startNewTask({
-        task: options.task,
-        images: options.images,
-      });
-      return v4(); // Cline doesn't return task ID
+      // await this.clineAdapter.startNewTask({
+      //   task: options.task,
+      //   images: options.images,
+      // });
+      // return v4(); // Cline doesn't return task ID
+      return this.clineAdapter.startNewTaskInTestMode(options.task);
     } else {
       return await this.rooCodeAdapter.startNewTask({
         configuration: options.configuration,

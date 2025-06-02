@@ -43,16 +43,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "cline-maestro.startServer",
-        "title": "Start Local Server",
-        "category": "Cline Maestro"
-      },
-      {
-        "command": "cline-maestro.stopServer",
-        "title": "Stop Local Server",
-        "category": "Cline Maestro"
-      },
-      {
         "command": "cline-maestro.getStatus",
         "title": "Get Extensions Status",
         "category": "Cline Maestro"
@@ -100,6 +90,7 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
+    "axios": "^1.9.0",
     "uuid": "^11.1.0"
   }
 }

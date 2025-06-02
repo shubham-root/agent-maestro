@@ -13,7 +13,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   try {
     await controller.initialize();
-    logger.info("Extension controller initialized successfully");
   } catch (error) {
     logger.error("Failed to initialize extension controller:", error);
     vscode.window.showErrorMessage(
@@ -28,41 +27,39 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage(JSON.stringify(status, null, 2));
     }),
 
-    // vscode.commands.registerCommand("cline-maestro.startTask", async () => {
-    //   try {
-    //     const task = await vscode.window.showInputBox({
-    //       prompt: "Enter task description",
-    //       placeHolder: "What would you like the AI to help you with?",
-    //     });
+    vscode.commands.registerCommand("cline-maestro.startTask", async () => {
+      try {
+        const task = await vscode.window.showInputBox({
+          prompt: "Enter task description",
+          placeHolder: "What would you like the AI to help you with?",
+        });
 
-    //     if (!task) {
-    //       return;
-    //     }
+        if (!task) {
+          return;
+        }
 
-    //     const extensionTypeString = await vscode.window.showQuickPick(
-    //       ["Cline", "Roo Code"],
-    //       { placeHolder: "Select extension to use" },
-    //     );
+        const extensionTypeString = await vscode.window.showQuickPick(
+          ["Cline", "Roo Code"],
+          { placeHolder: "Select extension to use" },
+        );
 
-    //     if (!extensionTypeString) {
-    //       return;
-    //     }
+        if (!extensionTypeString) {
+          return;
+        }
 
-    //     const extensionType =
-    //       extensionTypeString === "Cline"
-    //         ? ExtensionType.CLINE
-    //         : ExtensionType.ROO_CODE;
-    //     const taskId = await controller.startNewTask({ task }, extensionType);
-    //     vscode.window.showInformationMessage(
-    //       `Task started with ${extensionType} (ID: ${taskId})`,
-    //     );
-    //   } catch (error) {
-    //     logger.error("Failed to start task:", error);
-    //     vscode.window.showErrorMessage(
-    //       `Failed to start task: ${(error as Error).message}`,
-    //     );
-    //   }
-    // }),
+        const extensionType =
+          extensionTypeString === "Cline"
+            ? ExtensionType.CLINE
+            : ExtensionType.ROO_CODE;
+        const data = await controller.startNewTask({ task }, extensionType);
+        logger.info(data || "No data returned from task start");
+      } catch (error) {
+        logger.error("Failed to start task:", error);
+        vscode.window.showErrorMessage(
+          `Failed to start task: ${(error as Error).message}`,
+        );
+      }
+    }),
   ];
 
   context.subscriptions.push(...disposables);
