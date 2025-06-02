@@ -5,12 +5,12 @@ import { v4 } from "uuid";
 import { logger } from "../utils/logger";
 import { ClineAdapter } from "./ClineAdapter";
 import { RooCodeAdapter } from "./RooCodeAdapter";
+import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
 
 export interface ExtensionStatus {
   isInstalled: boolean;
   isActive: boolean;
   version?: string;
-  api?: any;
 }
 
 export interface UnifiedTaskOptions {
@@ -32,12 +32,17 @@ export enum ExtensionType {
 export class ExtensionController extends EventEmitter {
   private clineAdapter: ClineAdapter;
   private rooCodeAdapter: RooCodeAdapter;
+  private adapters: Record<ExtensionType, ExtensionBaseAdapter>;
   public isInitialized = false;
 
   constructor() {
     super();
     this.clineAdapter = new ClineAdapter();
     this.rooCodeAdapter = new RooCodeAdapter();
+    this.adapters = {
+      [ExtensionType.CLINE]: this.clineAdapter,
+      [ExtensionType.ROO_CODE]: this.rooCodeAdapter,
+    };
   }
 
   /**
@@ -49,15 +54,13 @@ export class ExtensionController extends EventEmitter {
       return;
     }
 
-    await this.clineAdapter.initialize();
-    await this.rooCodeAdapter.initialize();
+    for (const a in this.adapters) {
+      await this.adapters[a as ExtensionType].initialize();
+    }
 
-    if (
-      !this.clineAdapter.isInstalled() &&
-      !this.rooCodeAdapter.isInstalled()
-    ) {
+    if (Object.values(this.adapters).every((adapter) => !adapter.isActive)) {
       throw new Error(
-        "No compatible extensions found. Please install Cline or RooCode extension.",
+        "No active extension found. This may be due to missing installations or activation issues.",
       );
     }
 
@@ -68,21 +71,21 @@ export class ExtensionController extends EventEmitter {
   /**
    * Get status of both extensions
    */
-  getExtensionStatus(): { cline: ExtensionStatus; rooCode: ExtensionStatus } {
-    return {
-      cline: {
-        isInstalled: this.clineAdapter.isInstalled(),
-        isActive: this.clineAdapter.isActive,
-        version: this.clineAdapter.getVersion(),
-        api: this.clineAdapter.getApi(),
-      },
-      rooCode: {
-        isInstalled: this.rooCodeAdapter.isInstalled(),
-        isActive: this.rooCodeAdapter.isActive,
-        version: this.rooCodeAdapter.getVersion(),
-        api: this.rooCodeAdapter.getApi(),
-      },
-    };
+  getExtensionStatus(): Record<ExtensionType, ExtensionStatus> {
+    const status: Record<ExtensionType, ExtensionStatus> = {} as Record<
+      ExtensionType,
+      ExtensionStatus
+    >;
+    for (const t in this.adapters) {
+      const type = t as ExtensionType;
+      const adapter = this.adapters[type];
+      status[type] = {
+        isInstalled: adapter.isActive,
+        isActive: adapter.isActive,
+        version: adapter.getVersion ? adapter.getVersion() : undefined,
+      };
+    }
+    return status;
   }
 
   /**
@@ -124,12 +127,7 @@ export class ExtensionController extends EventEmitter {
     extensionType = ExtensionType.CLINE,
   ): Promise<void> {
     logger.info(`Sending message with ${extensionType}`);
-
-    if (extensionType === ExtensionType.CLINE) {
-      await this.clineAdapter.sendMessage(message, images);
-    } else {
-      await this.rooCodeAdapter.sendMessage(message, images);
-    }
+    await this.adapters[extensionType].sendMessage(message, images);
   }
 
   /**
@@ -138,12 +136,7 @@ export class ExtensionController extends EventEmitter {
    */
   async pressPrimaryButton(extensionType = ExtensionType.CLINE): Promise<void> {
     logger.info(`Pressing primary button with ${extensionType}`);
-
-    if (extensionType === ExtensionType.CLINE) {
-      await this.clineAdapter.pressPrimaryButton();
-    } else {
-      await this.rooCodeAdapter.pressPrimaryButton();
-    }
+    await this.adapters[extensionType].pressPrimaryButton();
   }
 
   /**
@@ -154,12 +147,7 @@ export class ExtensionController extends EventEmitter {
     extensionType = ExtensionType.CLINE,
   ): Promise<void> {
     logger.info(`Pressing secondary button with ${extensionType}`);
-
-    if (extensionType === ExtensionType.CLINE) {
-      await this.clineAdapter.pressSecondaryButton();
-    } else {
-      await this.rooCodeAdapter.pressSecondaryButton();
-    }
+    await this.adapters[extensionType].pressSecondaryButton();
   }
 
   /**
@@ -177,35 +165,7 @@ export class ExtensionController extends EventEmitter {
    * Check if specific extension is available
    */
   isExtensionAvailable(extensionType: ExtensionType): boolean {
-    return extensionType === ExtensionType.CLINE
-      ? this.clineAdapter.isActive
-      : this.rooCodeAdapter.isActive;
-  }
-
-  /**
-   * Get available functions for any extension
-   * @param extensionType The extension to get functions for
-   */
-  getExtensionFunctions(extensionType: ExtensionType): string[] {
-    if (extensionType === ExtensionType.CLINE) {
-      return this.clineAdapter.getAvailableFunctions();
-    } else {
-      return this.rooCodeAdapter.getAvailableFunctions();
-    }
-  }
-
-  /**
-   * Get available RooCode functions (for backward compatibility)
-   */
-  getRooCodeFunctions(): string[] {
-    return this.getExtensionFunctions(ExtensionType.ROO_CODE);
-  }
-
-  /**
-   * Get available Cline functions (for backward compatibility)
-   */
-  getClineFunctions(): string[] {
-    return this.getExtensionFunctions(ExtensionType.CLINE);
+    return this.adapters[extensionType].isActive;
   }
 
   /**

@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 import * as http from "http";
@@ -61,12 +62,15 @@ export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
    */
   private async enableTestMode(): Promise<void> {
     try {
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        throw new Error("No workspace folder found");
+      let workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri;
+      let shouldOpenWorkspace = false;
+
+      if (!workspacePath) {
+        workspacePath = vscode.Uri.file(os.homedir());
+        shouldOpenWorkspace = true;
       }
 
-      const tmpDir = path.join(workspaceFolder.uri.fsPath, ".tmp");
+      const tmpDir = path.join(workspacePath.fsPath, ".tmp");
       const evalsEnvPath = path.join(tmpDir, "evals.env");
 
       // Create .tmp directory if it doesn't exist
@@ -80,6 +84,13 @@ export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
         fs.writeFileSync(evalsEnvPath, "");
         logger.info("Created evals.env file for Cline test mode");
       }
+
+      if (shouldOpenWorkspace) {
+        await vscode.commands.executeCommand(
+          "vscode.openFolder",
+          vscode.Uri.file(tmpDir),
+        );
+      }
     } catch (error) {
       logger.error("Failed to enable Cline test mode:", error);
       throw error;
@@ -87,10 +98,13 @@ export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
   }
 
   /**
-   * Disable Cline test mode by removing .tmp folder
+   * Disable Cline test mode by shutting down the server and removing .tmp folder
    */
   private async disableTestMode(): Promise<void> {
     try {
+      // First, try to shutdown the local server
+      await this.shutdownServer();
+
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
       if (!workspaceFolder) {
         throw new Error("No workspace folder found");
@@ -106,6 +120,47 @@ export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
       logger.error("Failed to disable Cline test mode:", error);
       throw error;
     }
+  }
+
+  /**
+   * Shutdown the Cline test server by calling the /shutdown endpoint
+   */
+  private async shutdownServer(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const req = http.request(
+        {
+          hostname: "localhost",
+          port: 9876,
+          path: "/shutdown",
+          method: "POST",
+          timeout: 5000,
+        },
+        (res) => {
+          logger.info("Cline test server shutdown request sent");
+          res.on("data", () => {});
+          res.on("end", () => {
+            resolve();
+          });
+        },
+      );
+
+      req.on("error", (error) => {
+        // If the server is not running or already shut down, that's fine
+        logger.info(
+          "Cline test server shutdown request failed (server may already be down):",
+          error.message,
+        );
+        resolve();
+      });
+
+      req.on("timeout", () => {
+        req.destroy();
+        logger.warn("Cline test server shutdown request timed out");
+        resolve();
+      });
+
+      req.end();
+    });
   }
 
   /**
@@ -179,7 +234,9 @@ export class ClineAdapter extends ExtensionBaseAdapter<ClineAPI> {
    */
   async dispose(): Promise<void> {
     this.api = undefined;
+    if (this.isActive) {
+      await this.disableTestMode();
+    }
     this.isActive = false;
-    await this.disableTestMode();
   }
 }

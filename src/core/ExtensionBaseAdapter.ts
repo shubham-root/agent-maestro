@@ -141,23 +141,6 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
   }
 
   /**
-   * Get available functions
-   */
-  getAvailableFunctions(): string[] {
-    if (!this.api) {
-      return [];
-    }
-
-    const apiObj = this.api as any;
-    return Object.getOwnPropertyNames(Object.getPrototypeOf(apiObj))
-      .concat(Object.getOwnPropertyNames(apiObj))
-      .filter(
-        (name) => typeof apiObj[name] === "function" && name !== "constructor",
-      )
-      .sort();
-  }
-
-  /**
    * Check if extension is installed
    */
   isInstalled(): boolean {
