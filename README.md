@@ -418,12 +418,18 @@ controller.on("rooCodeActivated", (api) => {
 });
 ```
 
-## Development
+## Features
 
-1. Clone the repository
-2. Install dependencies: `pnpm install`
-3. Build: `pnpm run compile`
-4. Test in VSCode: Press F5 to launch Extension Development Host
+- A local HTTP server to communicate with Cline/RooCode/...
+  - [x] Design and implement unified controller layer based on the APIs of Cline, RooCode, etc.
+  - [ ] Design RESTful web API based on controller.
+  - [ ] Implement the server and support swagger page.
+  - [ ] Streaming output by Server-Sent Events (SSE) connection.
+- Batch tasks automation
+  - [ ] Show batch run command on customized file ext or `.csv` file.
+  - [ ] Show run results.
+- Support Github Copilot and Kilocode.
+- Better support Cline, see if any internal communication leaked which could be used.
 
 ## License
 

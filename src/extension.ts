@@ -1,8 +1,10 @@
 import * as vscode from "vscode";
 import { logger } from "./utils/logger";
 import { ExtensionController, ExtensionType } from "./core/controller";
+import { ProxyServer } from "./server/ProxyServer";
 
 let controller: ExtensionController;
+let proxy: ProxyServer;
 
 export async function activate(context: vscode.ExtensionContext) {
   // Debugging usage
@@ -19,6 +21,8 @@ export async function activate(context: vscode.ExtensionContext) {
       `Cline Maestro: Failed to initialize - ${(error as Error).message}`,
     );
   }
+
+  proxy = new ProxyServer(controller);
 
   // Register commands
   const disposables = [
@@ -60,9 +64,79 @@ export async function activate(context: vscode.ExtensionContext) {
         );
       }
     }),
+
+    vscode.commands.registerCommand("cline-maestro.startServer", async () => {
+      try {
+        if (!proxy) {
+          vscode.window.showErrorMessage("Proxy server not initialized");
+          return;
+        }
+
+        await proxy.start();
+        vscode.window.showInformationMessage(
+          `Proxy server started on ${proxy.getStatus().url}, you can check all available API endpoints at ${proxy.getOpenAPIUrl()}`,
+        );
+      } catch (error) {
+        logger.error("Failed to start server:", error);
+        vscode.window.showErrorMessage(
+          `Failed to start server: ${(error as Error).message}`,
+        );
+      }
+    }),
+
+    vscode.commands.registerCommand("cline-maestro.stopServer", async () => {
+      try {
+        if (!proxy) {
+          vscode.window.showErrorMessage("Proxy server not initialized");
+          return;
+        }
+
+        await proxy.stop();
+        vscode.window.showInformationMessage("Proxy server stopped");
+      } catch (error) {
+        logger.error("Failed to stop server:", error);
+        vscode.window.showErrorMessage(
+          `Failed to stop server: ${(error as Error).message}`,
+        );
+      }
+    }),
+
+    vscode.commands.registerCommand("cline-maestro.restartServer", async () => {
+      try {
+        if (!proxy) {
+          vscode.window.showErrorMessage("Proxy server not initialized");
+          return;
+        }
+
+        await proxy.restart();
+        const status = proxy.getStatus();
+        vscode.window.showInformationMessage(
+          `Proxy server restarted on ${status.url}`,
+        );
+      } catch (error) {
+        logger.error("Failed to restart server:", error);
+        vscode.window.showErrorMessage(
+          `Failed to restart server: ${(error as Error).message}`,
+        );
+      }
+    }),
+
+    vscode.commands.registerCommand("cline-maestro.getServerStatus", () => {
+      if (!proxy) {
+        vscode.window.showErrorMessage("Proxy server not initialized");
+        return;
+      }
+
+      const status = proxy.getStatus();
+      vscode.window.showInformationMessage(
+        `Server Status: ${status.isRunning ? "Running" : "Stopped"} | Port: ${status.port} | URL: ${status.url}`,
+      );
+    }),
   ];
 
   context.subscriptions.push(...disposables);
+
+  await vscode.commands.executeCommand("cline-maestro.startServer");
 
   return controller;
 }
@@ -70,6 +144,10 @@ export async function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export async function deactivate() {
   try {
+    if (proxy) {
+      await proxy.stop();
+      logger.info("Proxy server stopped");
+    }
     if (controller) {
       await controller.dispose();
       logger.info("Extension controller disposed");

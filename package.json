@@ -51,6 +51,26 @@
         "command": "cline-maestro.startTask",
         "title": "Start New Task",
         "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.startServer",
+        "title": "Start API Server",
+        "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.stopServer",
+        "title": "Stop API Server",
+        "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.restartServer",
+        "title": "Restart API Server",
+        "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.getServerStatus",
+        "title": "Get API Server Status",
+        "category": "Cline Maestro"
       }
     ]
   },
@@ -90,7 +110,9 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "dependencies": {
+    "@fastify/swagger": "^9.5.1",
     "axios": "^1.9.0",
+    "fastify": "^5.3.3",
     "uuid": "^11.1.0"
   }
 }
