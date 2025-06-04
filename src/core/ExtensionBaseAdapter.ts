@@ -7,7 +7,7 @@ import { logger } from "../utils/logger";
  */
 export abstract class ExtensionBaseAdapter<TApi = any> {
   protected extension: vscode.Extension<any> | undefined;
-  protected api: TApi | undefined;
+  public api: TApi | undefined;
   public isActive = false;
 
   constructor() {}
@@ -79,7 +79,9 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
   /**
    * Activate extension
    */
-  protected async activateExtension(): Promise<void> {
+  protected async activateExtension(
+    forceActivate: boolean = false,
+  ): Promise<void> {
     if (!this.extension) {
       throw new Error(`${this.getDisplayName()} not discovered`);
     }
@@ -87,7 +89,7 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
     // Perform pre-activation setup
     await this.preActivation();
 
-    if (!this.extension.isActive) {
+    if (!this.extension.isActive || forceActivate) {
       try {
         this.api = await this.extension.activate();
         logger.info(`${this.getDisplayName()} activated`);
@@ -152,13 +154,6 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
    */
   getVersion(): string | undefined {
     return this.extension?.packageJSON.version;
-  }
-
-  /**
-   * Get the API instance
-   */
-  getApi(): TApi | undefined {
-    return this.api;
   }
 
   /**

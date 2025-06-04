@@ -1,14 +1,24 @@
-import * as vscode from "vscode";
+// import * as vscode from "vscode";
+import * as os from "os";
+import * as path from "path";
 import { logger } from "../utils/logger";
+import { waitFor } from "../utils/waitFor";
 import {
   RooCodeAPI,
   RooCodeSettings,
   ProviderSettings,
   ProviderSettingsEntry,
+  IpcMessageType,
+  RooCodeEventName,
 } from "@roo-code/types";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
+import { IpcClient } from "../vendor/roo-code/ipc-client";
 
-// [TODO] Will start Roo Code IPC work after Cline adapter finished
+const socketPath = path.join(
+  os.tmpdir(),
+  `roo-code-evals-${crypto.randomUUID().slice(0, 8)}.sock`,
+);
+
 export interface RooCodeTaskOptions {
   configuration?: RooCodeSettings;
   text?: string;
@@ -21,8 +31,11 @@ export interface RooCodeTaskOptions {
  * Handles RooCode-specific logic and API interactions
  */
 export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
+  private ipcClient: IpcClient | undefined;
+
   constructor() {
     super();
+    process.env.ROO_CODE_IPC_SOCKET_PATH = socketPath;
   }
 
   /**
@@ -37,6 +50,52 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
    */
   protected getDisplayName(): string {
     return "RooCodeAdapter";
+  }
+
+  /**
+   * Perform any post-activation setup
+   */
+  protected async postActivation(): Promise<void> {
+    logger.info("Connecting to Roo Code IPC Server from socket:", socketPath);
+    this.ipcClient = new IpcClient(socketPath);
+
+    try {
+      await waitFor(() => this.ipcClient!.isReady, {
+        interval: 250,
+        timeout: 5_000,
+      });
+    } catch (error) {
+      logger.error(`IPC client unable to connect`);
+      this.ipcClient.disconnect();
+      return;
+    }
+
+    logger.info("Roo Code IPC client connected");
+    this.registerIpcListeners();
+  }
+
+  /**
+   * Activate extension with force activation
+   */
+  protected async activateExtension(): Promise<void> {
+    await super.activateExtension(true);
+  }
+
+  private registerIpcListeners(): void {
+    if (!this.ipcClient) {
+      return;
+    }
+
+    this.ipcClient.on(IpcMessageType.TaskEvent, (evt) => {
+      const { eventName, payload } = evt;
+      if (eventName === RooCodeEventName.Message) {
+        logger.info(JSON.stringify(payload, null, 2));
+      }
+    });
+
+    this.ipcClient.on(IpcMessageType.Disconnect, () => {
+      logger.info("Roo Code IPC client disconnect");
+    });
   }
 
   /**

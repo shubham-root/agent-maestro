@@ -30,8 +30,8 @@ export enum ExtensionType {
  * Provides unified API access and can be used by both VSCode extension and local server
  */
 export class ExtensionController extends EventEmitter {
-  private clineAdapter: ClineAdapter;
-  private rooCodeAdapter: RooCodeAdapter;
+  public readonly clineAdapter: ClineAdapter;
+  public readonly rooCodeAdapter: RooCodeAdapter;
   private adapters: Record<ExtensionType, ExtensionBaseAdapter>;
   public isInitialized = false;
 
@@ -99,20 +99,17 @@ export class ExtensionController extends EventEmitter {
   ): Promise<string | void> {
     logger.info(`Starting new task with ${extensionType}`);
 
-    if (extensionType === ExtensionType.CLINE) {
-      // await this.clineAdapter.startNewTask({
-      //   task: options.task,
-      //   images: options.images,
-      // });
-      // return v4(); // Cline doesn't return task ID
-      return this.clineAdapter.startNewTaskInTestMode(options.task);
-    } else {
-      return await this.rooCodeAdapter.startNewTask({
-        configuration: options.configuration,
-        text: options.task,
-        images: options.images,
-        newTab: options.newTab,
-      });
+    switch (extensionType) {
+      case ExtensionType.CLINE:
+        return this.clineAdapter.startNewTaskInTestMode(options.task);
+      case ExtensionType.ROO_CODE:
+        return await this.rooCodeAdapter.startNewTask({
+          configuration: options.configuration,
+          text: options.task,
+          images: options.images,
+          newTab: options.newTab ?? true,
+        });
+      default:
     }
   }
 

@@ -431,6 +431,21 @@ controller.on("rooCodeActivated", (api) => {
 - Support Github Copilot and Kilocode.
 - Better support Cline, see if any internal communication leaked which could be used.
 
+## Third-Party Code
+
+This project includes code from third-party open source projects:
+
+### RooCode IPC Components
+
+- **Location**: `src/vendor/roo-code/`
+- **Source**: [Roo-Code](https://github.com/RooCodeInc/Roo-Code)
+- **License**: Apache License 2.0
+- **Copyright**: Copyright 2025 Roo Code, Inc.
+
+The original license is included at `src/vendor/roo-code/LICENSE`.
+
 ## License
 
 MIT License - see LICENSE file for details.
+
+The vendor code in `src/vendor/roo-code/` is licensed under Apache License 2.0 as specified in the included license file.
