@@ -91,11 +91,11 @@ export class ExtensionController extends EventEmitter {
   /**
    * Unified API: Start a new task
    * @param options Task options
-   * @param extensionType Which extension to use (defaults to "cline")
+   * @param extensionType Which extension to use (defaults to "roo-code")
    */
   async startNewTask(
     options: UnifiedTaskOptions,
-    extensionType = ExtensionType.CLINE,
+    extensionType = ExtensionType.ROO_CODE,
   ): Promise<string | void> {
     logger.info(`Starting new task with ${extensionType}`);
 
@@ -107,7 +107,8 @@ export class ExtensionController extends EventEmitter {
           configuration: options.configuration,
           text: options.task,
           images: options.images,
-          newTab: options.newTab ?? true,
+          // newTab: options.newTab ?? true,
+          newTab: options.newTab,
         });
       default:
     }
@@ -117,12 +118,12 @@ export class ExtensionController extends EventEmitter {
    * Unified API: Send message to current task
    * @param message Message to send
    * @param images Optional images
-   * @param extensionType Which extension to use (defaults to "cline")
+   * @param extensionType Which extension to use (defaults to "roo-code")
    */
   async sendMessage(
     message?: string,
     images?: string[],
-    extensionType = ExtensionType.CLINE,
+    extensionType = ExtensionType.ROO_CODE,
   ): Promise<void> {
     logger.info(`Sending message with ${extensionType}`);
     await this.adapters[extensionType].sendMessage(message, images);
@@ -130,19 +131,21 @@ export class ExtensionController extends EventEmitter {
 
   /**
    * Unified API: Press primary button
-   * @param extensionType Which extension to use (defaults to "cline")
+   * @param extensionType Which extension to use (defaults to "roo-code")
    */
-  async pressPrimaryButton(extensionType = ExtensionType.CLINE): Promise<void> {
+  async pressPrimaryButton(
+    extensionType = ExtensionType.ROO_CODE,
+  ): Promise<void> {
     logger.info(`Pressing primary button with ${extensionType}`);
     await this.adapters[extensionType].pressPrimaryButton();
   }
 
   /**
    * Unified API: Press secondary button
-   * @param extensionType Which extension to use (defaults to "cline")
+   * @param extensionType Which extension to use (defaults to "roo-code")
    */
   async pressSecondaryButton(
-    extensionType = ExtensionType.CLINE,
+    extensionType = ExtensionType.ROO_CODE,
   ): Promise<void> {
     logger.info(`Pressing secondary button with ${extensionType}`);
     await this.adapters[extensionType].pressSecondaryButton();

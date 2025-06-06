@@ -5,6 +5,7 @@ import { ProxyServer } from "./server/ProxyServer";
 
 let controller: ExtensionController;
 let proxy: ProxyServer;
+let lastUsedExtension: ExtensionType | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
   // Debugging usage
@@ -43,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         const extensionTypeString = await vscode.window.showQuickPick(
-          ["Cline", "Roo Code"],
+          ["Roo Code", "Cline"],
           { placeHolder: "Select extension to use" },
         );
 
@@ -55,8 +56,17 @@ export async function activate(context: vscode.ExtensionContext) {
           extensionTypeString === "Cline"
             ? ExtensionType.CLINE
             : ExtensionType.ROO_CODE;
-        const data = await controller.startNewTask({ task }, extensionType);
-        logger.info(data || "No data returned from task start");
+        const lastTaskId = await controller.startNewTask(
+          { task },
+          extensionType,
+        );
+
+        // Track the last used extension and mark that we have an active task
+        lastUsedExtension = extensionType;
+
+        logger.info(
+          `New task started with ID: ${lastTaskId} using ${extensionType}`,
+        );
       } catch (error) {
         logger.error("Failed to start task:", error);
         vscode.window.showErrorMessage(
@@ -131,6 +141,42 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage(
         `Server Status: ${status.isRunning ? "Running" : "Stopped"} | Port: ${status.port} | URL: ${status.url}`,
       );
+    }),
+
+    vscode.commands.registerCommand("cline-maestro.sendMessage", async () => {
+      try {
+        // Check if we have a last used extension
+        if (!lastUsedExtension) {
+          vscode.window.showWarningMessage(
+            "No previous extension called by Cline Maestro before. Please start a new task first.",
+          );
+          return;
+        }
+
+        // Check if the last used extension is still available
+        if (!controller.isExtensionAvailable(lastUsedExtension)) {
+          vscode.window.showErrorMessage(
+            `${lastUsedExtension} adapter not available or not active`,
+          );
+          return;
+        }
+
+        const message = await vscode.window.showInputBox({
+          prompt: `Enter message to send to ${lastUsedExtension} task`,
+          placeHolder: "Type your message here...",
+        });
+
+        if (!message) {
+          return;
+        }
+
+        await controller.sendMessage(message, undefined, lastUsedExtension);
+      } catch (error) {
+        logger.error("Failed to send message:", error);
+        vscode.window.showErrorMessage(
+          `Failed to send message: ${(error as Error).message}`,
+        );
+      }
     }),
   ];
 

@@ -71,6 +71,11 @@
         "command": "cline-maestro.getServerStatus",
         "title": "Get API Server Status",
         "category": "Cline Maestro"
+      },
+      {
+        "command": "cline-maestro.sendMessage",
+        "title": "Send Message to Active Task",
+        "category": "Cline Maestro"
       }
     ]
   },
