@@ -1,23 +1,13 @@
 // import * as vscode from "vscode";
-import * as os from "os";
-import * as path from "path";
 import { logger } from "../utils/logger";
-import { waitFor } from "../utils/waitFor";
 import {
   RooCodeAPI,
   RooCodeSettings,
   ProviderSettings,
   ProviderSettingsEntry,
-  IpcMessageType,
   RooCodeEventName,
 } from "@roo-code/types";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
-import { IpcClient } from "../vendor/roo-code/ipc-client";
-
-const socketPath = path.join(
-  os.tmpdir(),
-  `roo-code-evals-${crypto.randomUUID().slice(0, 8)}.sock`,
-);
 
 export interface RooCodeTaskOptions {
   configuration?: RooCodeSettings;
@@ -31,11 +21,8 @@ export interface RooCodeTaskOptions {
  * Handles RooCode-specific logic and API interactions
  */
 export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
-  private ipcClient: IpcClient | undefined;
-
   constructor() {
     super();
-    process.env.ROO_CODE_IPC_SOCKET_PATH = socketPath;
   }
 
   /**
@@ -56,22 +43,7 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
    * Perform any post-activation setup
    */
   protected async postActivation(): Promise<void> {
-    logger.info("Connecting to Roo Code IPC Server from socket:", socketPath);
-    this.ipcClient = new IpcClient(socketPath);
-
-    try {
-      await waitFor(() => this.ipcClient!.isReady, {
-        interval: 250,
-        timeout: 5_000,
-      });
-    } catch (error) {
-      logger.error(`IPC client unable to connect`);
-      this.ipcClient.disconnect();
-      return;
-    }
-
-    logger.info("Roo Code IPC client connected");
-    this.registerIpcListeners();
+    this.registerEventListeners();
   }
 
   /**
@@ -81,21 +53,85 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
     await super.activateExtension(true);
   }
 
-  private registerIpcListeners(): void {
-    if (!this.ipcClient) {
+  /**
+   * Register event listeners using this.api.on()
+   */
+  private registerEventListeners(): void {
+    if (!this.api) {
+      logger.error("RooCode API not available for event listeners");
       return;
     }
 
-    this.ipcClient.on(IpcMessageType.TaskEvent, (evt) => {
-      const { eventName, payload } = evt;
-      if (eventName === RooCodeEventName.Message) {
-        logger.info(JSON.stringify(payload, null, 2));
-      }
+    // Listen for message events
+    this.api.on(RooCodeEventName.Message, (data) => {
+      logger.info("RooCode Message Event:", JSON.stringify(data, null, 2));
     });
 
-    this.ipcClient.on(IpcMessageType.Disconnect, () => {
-      logger.info("Roo Code IPC client disconnect");
+    // Listen for task created events
+    this.api.on(RooCodeEventName.TaskCreated, (taskId) => {
+      logger.info(`RooCode Task Created: ${taskId}`);
     });
+
+    // Listen for task started events
+    this.api.on(RooCodeEventName.TaskStarted, (taskId) => {
+      logger.info(`RooCode Task Started: ${taskId}`);
+    });
+
+    // Listen for task completed events
+    this.api.on(
+      RooCodeEventName.TaskCompleted,
+      (taskId, tokenUsage, toolUsage) => {
+        logger.info(`RooCode Task Completed: ${taskId}`, {
+          tokenUsage,
+          toolUsage,
+        });
+      },
+    );
+
+    // Listen for task aborted events
+    this.api.on(RooCodeEventName.TaskAborted, (taskId) => {
+      logger.info(`RooCode Task Aborted: ${taskId}`);
+    });
+
+    // Listen for task paused events
+    this.api.on(RooCodeEventName.TaskPaused, (taskId) => {
+      logger.info(`RooCode Task Paused: ${taskId}`);
+    });
+
+    // Listen for task unpaused events
+    this.api.on(RooCodeEventName.TaskUnpaused, (taskId) => {
+      logger.info(`RooCode Task Unpaused: ${taskId}`);
+    });
+
+    // Listen for task mode switched events
+    this.api.on(RooCodeEventName.TaskModeSwitched, (taskId, mode) => {
+      logger.info(`RooCode Task Mode Switched: ${taskId} -> ${mode}`);
+    });
+
+    // Listen for task spawned events
+    this.api.on(RooCodeEventName.TaskSpawned, (parentTaskId, childTaskId) => {
+      logger.info(`RooCode Task Spawned: ${parentTaskId} -> ${childTaskId}`);
+    });
+
+    // Listen for task ask responded events
+    this.api.on(RooCodeEventName.TaskAskResponded, (taskId) => {
+      logger.info(`RooCode Task Ask Responded: ${taskId}`);
+    });
+
+    // Listen for task token usage updated events
+    this.api.on(
+      RooCodeEventName.TaskTokenUsageUpdated,
+      (taskId, tokenUsage) => {
+        logger.info(`RooCode Task Token Usage Updated: ${taskId}`, tokenUsage);
+      },
+    );
+
+    // Listen for task tool failed events
+    this.api.on(RooCodeEventName.TaskToolFailed, (taskId, tool, error) => {
+      logger.error(`RooCode Task Tool Failed: ${taskId} - ${tool}`, error);
+    });
+
+    logger.info("RooCode event listeners registered successfully");
   }
 
   /**
@@ -340,5 +376,17 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
 
     logger.info(`Setting RooCode active profile: ${name}`);
     return await this.api.setActiveProfile(name);
+  }
+
+  /**
+   * Cleanup resources and remove event listeners
+   */
+  async dispose(): Promise<void> {
+    if (this.api) {
+      // Remove all event listeners
+      this.api.removeAllListeners();
+    }
+
+    await super.dispose();
   }
 }
