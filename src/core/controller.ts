@@ -100,7 +100,10 @@ export class ExtensionController extends EventEmitter {
 
     switch (extensionType) {
       case ExtensionType.CLINE:
-        return this.clineAdapter.startNewTaskInTestMode(options.task);
+        return this.clineAdapter.startNewTask({
+          task: options.task,
+          images: options.images,
+        });
       case ExtensionType.ROO_CODE:
         return await this.rooCodeAdapter.startNewTask({
           configuration: options.configuration,

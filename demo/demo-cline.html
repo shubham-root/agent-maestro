@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cline Maestro Demo</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        font-weight: 300;
+      }
+
+      .header p {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      .content {
+        padding: 40px;
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+      }
+
+      .task-input {
+        width: 100%;
+        min-height: 120px;
+        padding: 15px;
+        border: 2px solid #e1e1e1;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: inherit;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+      }
+
+      .task-input:focus {
+        outline: none;
+        border-color: #4caf50;
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+      }
+
+      .submit-btn {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        color: white;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+        width: 100%;
+      }
+
+      .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+      }
+
+      .submit-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #4caf50;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .result {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 8px;
+        display: none;
+      }
+
+      .result.success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
+
+      .result.error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
+
+      .result-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+        font-size: 1.1em;
+      }
+
+      .result-content {
+        font-family: "Courier New", monospace;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 15px;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .api-info {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+      }
+
+      .api-info h3 {
+        color: #495057;
+        margin-bottom: 10px;
+      }
+
+      .api-info code {
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🤖 Cline Maestro</h1>
+        <p>Submit tasks and see AI in action</p>
+      </div>
+
+      <div class="content">
+        <div class="api-info">
+          <h3>API Endpoint</h3>
+          <p>
+            This demo calls <code>POST /api/v1/cline/task</code> to submit tasks
+            to the Cline extension.
+          </p>
+        </div>
+
+        <form id="taskForm">
+          <div class="form-group">
+            <label for="taskInput">Task Description:</label>
+            <textarea
+              id="taskInput"
+              name="task"
+              class="task-input"
+              placeholder="Describe what you want Cline to do... For example:
+- Create a simple HTML page with a contact form
+- Write a Python script to parse CSV files
+- Fix the bug in my JavaScript code
+- Add a new feature to my React component"
+              required
+            ></textarea>
+          </div>
+
+          <button type="submit" class="submit-btn" id="submitBtn">
+            🚀 Submit Task
+          </button>
+        </form>
+
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <p>Submitting task to Cline...</p>
+        </div>
+
+        <div class="result" id="result">
+          <div class="result-title" id="resultTitle"></div>
+          <div class="result-content" id="resultContent"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("taskForm");
+      const taskInput = document.getElementById("taskInput");
+      const submitBtn = document.getElementById("submitBtn");
+      const loading = document.getElementById("loading");
+      const result = document.getElementById("result");
+      const resultTitle = document.getElementById("resultTitle");
+      const resultContent = document.getElementById("resultContent");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const task = taskInput.value.trim();
+        if (!task) {
+          showResult("error", "Error", "Please enter a task description.");
+          return;
+        }
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+        loading.style.display = "block";
+        result.style.display = "none";
+
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:23333/api/v1/cline/task",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                task: task,
+              }),
+            },
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showResult(
+              "success",
+              "Task Submitted Successfully! 🎉",
+              `Task ID: ${data.id}
+Status: ${data.status}
+Message: ${data.message}
+Timestamp: ${data.timestamp}
+
+The task has been sent to Cline extension and should appear in your VS Code editor.`,
+            );
+          } else {
+            showResult(
+              "error",
+              "Task Submission Failed",
+              `Status: ${data.status || "Unknown"}
+Message: ${data.message || "Unknown error occurred"}
+
+Please check that the Cline extension is properly installed and configured.`,
+            );
+          }
+        } catch (error) {
+          showResult(
+            "error",
+            "Network Error",
+            `Failed to connect to the API server.
+Error: ${error.message}
+
+Please ensure the Cline Maestro server is running.`,
+          );
+        } finally {
+          // Reset form state
+          submitBtn.disabled = false;
+          submitBtn.textContent = "🚀 Submit Task";
+          loading.style.display = "none";
+        }
+      });
+
+      function showResult(type, title, content) {
+        result.className = `result ${type}`;
+        result.style.display = "block";
+        resultTitle.textContent = title;
+        resultContent.textContent = content;
+        result.scrollIntoView({ behavior: "smooth" });
+      }
+
+      // Add some example tasks on load
+      const examples = [
+        "Create a simple todo list application with HTML, CSS, and JavaScript",
+        "Write a Python script to analyze CSV data and create visualizations",
+        "Build a React component for a user profile card",
+        "Fix the responsive design issues in my CSS",
+        "Add error handling to my API endpoints",
+      ];
+
+      // Randomly set a placeholder example
+      taskInput.placeholder = `Describe what you want Cline to do... For example:\n\n"${examples[Math.floor(Math.random() * examples.length)]}"`;
+    </script>
+  </body>
+</html>

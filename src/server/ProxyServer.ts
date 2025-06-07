@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance } from "fastify";
 import swagger from "@fastify/swagger";
+import cors from "@fastify/cors";
 import { logger } from "../utils/logger";
 import { ExtensionController, ExtensionType } from "../core/controller";
 
@@ -28,8 +29,18 @@ export class ProxyServer {
       logger: false, // Use our custom logger instead
     });
 
+    this.setupCors();
     this.setupSwagger();
     this.setupRoutes();
+  }
+
+  private async setupCors(): Promise<void> {
+    await this.fastify.register(cors, {
+      origin: true, // Allow all origins, you can restrict this to specific domains if needed
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+      credentials: true,
+    });
   }
 
   private async setupSwagger(): Promise<void> {
@@ -163,15 +174,15 @@ export class ProxyServer {
                 });
               }
 
-              const taskId = await this.controller.startNewTask(
+              await this.controller.startNewTask(
                 { task, images },
                 ExtensionType.CLINE,
               );
 
               const response: TaskResponse = {
-                id: taskId || `cline-${Date.now()}`,
-                status: "created",
-                message: "Task created successfully",
+                id: "",
+                status: "completed",
+                message: "Currently Cline does not support returning message",
                 timestamp: new Date().toISOString(),
               };
 

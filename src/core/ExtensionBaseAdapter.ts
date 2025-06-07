@@ -92,7 +92,6 @@ export abstract class ExtensionBaseAdapter<TApi = any> {
     if (!this.extension.isActive || forceActivate) {
       try {
         this.api = await this.extension.activate();
-        logger.info(`${this.getDisplayName()} activated`);
       } catch (error) {
         logger.error(`Failed to activate ${this.getDisplayName()}:`, error);
         throw error;
