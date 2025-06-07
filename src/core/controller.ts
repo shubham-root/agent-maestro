@@ -1,7 +1,6 @@
 // import * as vscode from "vscode";
 import { EventEmitter } from "events";
 import { RooCodeSettings } from "@roo-code/types";
-import { v4 } from "uuid";
 import { logger } from "../utils/logger";
 import { ClineAdapter } from "./ClineAdapter";
 import { RooCodeAdapter } from "./RooCodeAdapter";
