@@ -414,7 +414,7 @@ controller.on("rooCodeActivated", (api) => {
 
 - A local HTTP server to communicate with Cline/RooCode/...
   - [x] Design and implement unified controller layer based on the APIs of Cline, RooCode, etc.
-  - [ ] Design RESTful web API based on controller.
+  - [x] Design RESTful web API based on controller.
   - [ ] Implement the server and support swagger page.
   - [ ] Streaming output by Server-Sent Events (SSE) connection.
 - Batch tasks automation
@@ -422,6 +422,9 @@ controller.on("rooCodeActivated", (api) => {
   - [ ] Show run results.
 - Support Github Copilot and Kilocode.
 - Better support Cline, see if any internal communication leaked which could be used.
+
+- Add the detailed contract of the SSE response
+- Use ZOD to add type constrain of controller?
 
 ## License
 

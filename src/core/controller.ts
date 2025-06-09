@@ -111,7 +111,7 @@ export class ExtensionController extends EventEmitter {
           configuration: options.configuration,
           text: options.task,
           images: options.images,
-          newTab: options.newTab ?? true,
+          // newTab: options.newTab ?? true,
           eventHandlers: options.eventHandlers,
         });
       default:

@@ -399,6 +399,19 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
   }
 
   /**
+   * Register event handlers for an existing task
+   */
+  registerTaskEventHandlers(
+    taskId: string,
+    eventHandlers: TaskEventHandlers,
+  ): void {
+    if (!this.activeTaskHandlers.has(taskId)) {
+      this.activeTaskHandlers.set(taskId, eventHandlers);
+      logger.info(`Registered event handlers for existing task: ${taskId}`);
+    }
+  }
+
+  /**
    * Remove event handlers for a specific task
    */
   removeTaskEventHandlers(taskId: string): void {

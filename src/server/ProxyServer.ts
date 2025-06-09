@@ -7,6 +7,7 @@ import { ExtensionController, ExtensionType } from "../core/controller";
 export interface TaskRequest {
   task: string;
   images?: string[];
+  taskId?: string;
 }
 
 export interface TaskResponse {
@@ -91,6 +92,11 @@ export class ProxyServer {
           type: "array",
           items: { type: "string" },
           description: "Optional array of base64-encoded images",
+        },
+        taskId: {
+          type: "string",
+          description:
+            "Optional task ID. If provided, sends message to existing task. If not provided, creates a new task.",
         },
       },
     });
@@ -209,9 +215,10 @@ export class ProxyServer {
           {
             schema: {
               tags: ["Tasks"],
-              summary: "Create a new RooCode task with event stream",
+              summary:
+                "Create a new RooCode task or send message to existing task",
               description:
-                "Creates and starts a new task using the RooCode extension, returns Server-Sent Events stream",
+                "Creates and starts a new task using the RooCode extension if no taskId is provided, or sends a message to an existing task if taskId is provided. Returns Server-Sent Events stream for task progress.",
               body: { $ref: "TaskRequest#" },
               response: {
                 200: {
@@ -239,7 +246,7 @@ export class ProxyServer {
           },
           async (request, reply) => {
             try {
-              const { task, images } = request.body as TaskRequest;
+              const { task, images, taskId } = request.body as TaskRequest;
 
               if (!task || task.trim() === "") {
                 return reply.status(400).send({
@@ -273,63 +280,6 @@ export class ProxyServer {
                 reply.raw.write(sseData);
               };
 
-              // Define event handlers for streaming task events
-              const eventHandlers = {
-                onMessage: (taskId: string, message: any) => {
-                  logger.info(`Task ${taskId} - Message:`, message);
-                  if (filteredSayTypes.includes(message.say)) {
-                    return;
-                  }
-                  sendSSE("message", {
-                    taskId,
-                    message,
-                    timestamp: new Date().toISOString(),
-                  });
-                },
-                onTaskCompleted: (
-                  taskId: string,
-                  tokenUsage: any,
-                  toolUsage: any,
-                ) => {
-                  logger.info(`Task completed: ${taskId}`, {
-                    tokenUsage,
-                    toolUsage,
-                  });
-                  sendSSE("task_completed", {
-                    taskId,
-                    tokenUsage,
-                    toolUsage,
-                    timestamp: new Date().toISOString(),
-                  });
-                  // Close the SSE stream
-                  reply.raw.end();
-                },
-                onTaskAborted: (taskId: string) => {
-                  logger.warn(`Task aborted: ${taskId}`);
-                  sendSSE("task_aborted", {
-                    taskId,
-                    timestamp: new Date().toISOString(),
-                  });
-                  // Close the SSE stream
-                  reply.raw.end();
-                },
-                onTaskToolFailed: (
-                  taskId: string,
-                  tool: string,
-                  error: string,
-                ) => {
-                  logger.error(
-                    `Tool failed in task ${taskId}: ${tool} - ${error}`,
-                  );
-                  sendSSE("tool_failed", {
-                    taskId,
-                    tool,
-                    error,
-                    timestamp: new Date().toISOString(),
-                  });
-                },
-              };
-
               // Handle client disconnect
               request.raw.on("close", () => {
                 logger.info("Client disconnected from SSE stream");
@@ -339,27 +289,125 @@ export class ProxyServer {
                 logger.error("SSE stream error:", err);
               });
 
+              // Define event handlers for streaming task events
+              const eventHandlers = {
+                onMessage: (handlerTaskId: string, message: any) => {
+                  if (filteredSayTypes.includes(message.say)) {
+                    return;
+                  }
+                  sendSSE("message", {
+                    taskId: handlerTaskId,
+                    message,
+                    timestamp: new Date().toISOString(),
+                  });
+                },
+                onTaskCompleted: (
+                  handlerTaskId: string,
+                  tokenUsage: any,
+                  toolUsage: any,
+                ) => {
+                  logger.info(`Task completed: ${handlerTaskId}`, {
+                    tokenUsage,
+                    toolUsage,
+                  });
+                  sendSSE("task_completed", {
+                    taskId: handlerTaskId,
+                    tokenUsage,
+                    toolUsage,
+                    timestamp: new Date().toISOString(),
+                  });
+                  // Close the SSE stream
+                  reply.raw.end();
+                },
+                onTaskAborted: (handlerTaskId: string) => {
+                  logger.warn(`Task aborted: ${handlerTaskId}`);
+                  sendSSE("task_aborted", {
+                    taskId: handlerTaskId,
+                    timestamp: new Date().toISOString(),
+                  });
+                  // Close the SSE stream
+                  reply.raw.end();
+                },
+                onTaskToolFailed: (
+                  handlerTaskId: string,
+                  tool: string,
+                  error: string,
+                ) => {
+                  logger.error(
+                    `Tool failed in task ${handlerTaskId}: ${tool} - ${error}`,
+                  );
+                  sendSSE("tool_failed", {
+                    taskId: handlerTaskId,
+                    tool,
+                    error,
+                    timestamp: new Date().toISOString(),
+                  });
+                },
+              };
+
               try {
-                const taskId = await this.controller.startNewTask(
-                  {
+                if (taskId) {
+                  // Send message to existing task
+                  logger.info(`Sending message to existing task: ${taskId}`);
+
+                  // Check if task exists in active tasks or history
+                  const activeTaskIds = this.controller.getActiveTaskIds();
+                  const isTaskInHistory =
+                    await this.controller.rooCodeAdapter.isTaskInHistory(
+                      taskId,
+                    );
+
+                  if (!activeTaskIds.includes(taskId) && !isTaskInHistory) {
+                    return reply.status(404).send({
+                      status: "failed",
+                      message: `Task with ID ${taskId} not found`,
+                    });
+                  }
+
+                  // If task is in history, resume it first
+                  if (!activeTaskIds.includes(taskId) && isTaskInHistory) {
+                    await this.controller.rooCodeAdapter.resumeTask(taskId);
+                  }
+
+                  // Register event handlers for this specific task to stream responses
+                  this.controller.rooCodeAdapter.registerTaskEventHandlers(
+                    taskId,
+                    eventHandlers,
+                  );
+
+                  // Send the message
+                  await this.controller.sendMessage(
                     task,
                     images,
-                    eventHandlers,
-                  },
-                  ExtensionType.ROO_CODE,
-                );
+                    ExtensionType.ROO_CODE,
+                  );
+                } else {
+                  // Create new task
+                  logger.info("Creating new RooCode task");
 
-                // Send initial task created event
-                sendSSE("task_created", {
-                  taskId: taskId || `roo-${Date.now()}`,
-                  status: "created",
-                  message: "Task created successfully",
-                  timestamp: new Date().toISOString(),
-                });
+                  const newTaskId = await this.controller.startNewTask(
+                    {
+                      task,
+                      images,
+                      eventHandlers,
+                    },
+                    ExtensionType.ROO_CODE,
+                  );
 
-                logger.info(`Created new RooCode task with SSE: ${taskId}`);
+                  // Send initial task created event
+                  sendSSE("task_created", {
+                    taskId: newTaskId || `roo-${Date.now()}`,
+                    status: "created",
+                    message: "Task created successfully",
+                    timestamp: new Date().toISOString(),
+                  });
+
+                  logger.info(
+                    `Created new RooCode task with SSE: ${newTaskId}`,
+                  );
+                }
               } catch (taskError) {
-                logger.error("Error starting RooCode task:", taskError);
+                logger.error("Error processing RooCode task:", taskError);
                 sendSSE("error", {
                   error:
                     taskError instanceof Error
@@ -370,7 +418,7 @@ export class ProxyServer {
                 reply.raw.end();
               }
             } catch (error) {
-              logger.error("Error creating RooCode task:", error);
+              logger.error("Error processing RooCode task request:", error);
               return reply.status(500).send({
                 status: "failed",
                 message:

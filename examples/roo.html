@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RooCode Chat</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chat-header {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+      }
+
+      .chat-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .chat-title h1 {
+        font-size: 24px;
+        color: #333;
+        margin: 0;
+      }
+
+      .new-chat-btn {
+        padding: 8px 16px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .new-chat-btn.enabled {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      .new-chat-btn:hover.enabled {
+        background: #0056b3;
+        transform: translateY(-1px);
+      }
+
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .message {
+        display: flex;
+        max-width: 80%;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      .message.user {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+      }
+
+      .message.agent {
+        align-self: flex-start;
+      }
+
+      .message-bubble {
+        padding: 12px 16px;
+        border-radius: 18px;
+        position: relative;
+        word-wrap: break-word;
+        max-width: 100%;
+      }
+
+      .message.user .message-bubble {
+        background: #007bff;
+        color: white;
+        border-bottom-right-radius: 6px;
+      }
+
+      .message.agent .message-bubble {
+        background: #f1f3f5;
+        color: #333;
+        border-bottom-left-radius: 6px;
+      }
+
+      .message-time {
+        font-size: 11px;
+        opacity: 0.7;
+        margin: 0 10px;
+        align-self: flex-end;
+        white-space: nowrap;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      .typing-indicator {
+        display: none;
+        align-self: flex-start;
+        max-width: 80%;
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      .typing-indicator.show {
+        display: flex;
+      }
+
+      .typing-bubble {
+        background: #f1f3f5;
+        padding: 12px 16px;
+        border-radius: 18px;
+        border-bottom-left-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .typing-dots {
+        display: flex;
+        gap: 4px;
+      }
+
+      .typing-dot {
+        width: 8px;
+        height: 8px;
+        background: #666;
+        border-radius: 50%;
+        animation: typing 1.4s infinite ease-in-out;
+      }
+
+      .typing-dot:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+      .typing-dot:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+
+      .streaming-text {
+        white-space: pre-wrap;
+        line-height: 1.4;
+      }
+
+      .chat-input-container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 20px;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+      }
+
+      .chat-input-wrapper {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+
+      .chat-input {
+        flex: 1;
+        min-height: 44px;
+        max-height: 120px;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 22px;
+        font-size: 16px;
+        font-family: inherit;
+        resize: none;
+        outline: none;
+        transition: border-color 0.2s;
+        line-height: 1.4;
+      }
+
+      .chat-input:focus {
+        border-color: #007bff;
+      }
+
+      .chat-input:disabled {
+        background: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+      }
+
+      .send-btn {
+        width: 44px;
+        height: 44px;
+        border: none;
+        border-radius: 50%;
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-size: 18px;
+      }
+
+      .send-btn:hover:not(:disabled) {
+        background: #0056b3;
+        transform: scale(1.05);
+      }
+
+      .send-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .status-indicator {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        border-radius: 15px;
+        font-size: 12px;
+        z-index: 200;
+        display: none;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      .status-indicator.show {
+        display: block;
+      }
+
+      .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.8);
+        padding: 40px 20px;
+      }
+
+      .empty-state h2 {
+        font-size: 32px;
+        margin-bottom: 12px;
+        font-weight: 300;
+      }
+
+      .empty-state p {
+        font-size: 18px;
+        opacity: 0.8;
+        max-width: 400px;
+        line-height: 1.5;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+        }
+        to {
+          transform: translateX(0);
+        }
+      }
+
+      @keyframes typing {
+        0%,
+        80%,
+        100% {
+          transform: scale(0.8);
+          opacity: 0.5;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      /* Scrollbar styling */
+      .chat-messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .chat-messages::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 3px;
+      }
+
+      .chat-messages::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+
+      /* Suggestions styling */
+      .suggestions-container {
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .suggestion-item {
+        padding: 10px 14px;
+        background: rgba(0, 123, 255, 0.08);
+        border: 1px solid rgba(0, 123, 255, 0.2);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        line-height: 1.4;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .suggestion-item:hover {
+        background: rgba(0, 123, 255, 0.15);
+        border-color: rgba(0, 123, 255, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .suggestion-number {
+        font-weight: 600;
+        color: #007bff;
+        min-width: 20px;
+        flex-shrink: 0;
+      }
+
+      .suggestion-text {
+        color: #333;
+        flex: 1;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .message {
+          max-width: 90%;
+        }
+
+        .chat-header {
+          padding: 12px 15px;
+        }
+
+        .chat-title h1 {
+          font-size: 20px;
+        }
+
+        .chat-messages {
+          padding: 15px;
+        }
+
+        .chat-input-container {
+          padding: 15px;
+        }
+
+        .suggestion-item {
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-header">
+      <div class="chat-title">
+        <span>🤖</span>
+        <h1>RooCode Chat</h1>
+      </div>
+      <button id="newChatBtn" class="new-chat-btn" onclick="startNewChat()">
+        ✨ New Chat
+      </button>
+    </div>
+
+    <div id="chatMessages" class="chat-messages">
+      <div class="empty-state">
+        <h2>Welcome to RooCode Chat</h2>
+        <p>
+          Start a conversation by typing your message below. I'm here to help
+          you with coding tasks and questions!
+        </p>
+      </div>
+    </div>
+
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="typing-bubble">
+        <div class="typing-dots">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+      <div class="message-time">Thinking...</div>
+    </div>
+
+    <div class="chat-input-container">
+      <div class="chat-input-wrapper">
+        <textarea
+          id="chatInput"
+          class="chat-input"
+          placeholder="Type your message..."
+          rows="1"
+        ></textarea>
+        <button id="sendBtn" class="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+
+    <div id="statusIndicator" class="status-indicator"></div>
+
+    <script>
+      let currentTaskId = null;
+      let isWaitingForResponse = false;
+      let currentStreamingMessage = null;
+      let streamingTimeout = null;
+      let activeResponseElement = null; // Track the currently streaming response
+
+      const chatMessages = document.getElementById("chatMessages");
+      const chatInput = document.getElementById("chatInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const newChatBtn = document.getElementById("newChatBtn");
+      const typingIndicator = document.getElementById("typingIndicator");
+      const statusIndicator = document.getElementById("statusIndicator");
+
+      // Auto-resize textarea
+      chatInput.addEventListener("input", function () {
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 120) + "px";
+      });
+
+      // Send message on Enter (Shift+Enter for new line)
+      chatInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      function showStatus(message) {
+        statusIndicator.textContent = message;
+        statusIndicator.classList.add("show");
+        setTimeout(() => {
+          statusIndicator.classList.remove("show");
+        }, 3000);
+      }
+
+      function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function getCurrentTime() {
+        return new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function addMessage(content, isUser = false, timestamp = null) {
+        // Remove empty state if it exists
+        const emptyState = chatMessages.querySelector(".empty-state");
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${isUser ? "user" : "agent"}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = "message-bubble";
+
+        if (isUser) {
+          bubble.textContent = content;
+        } else {
+          bubble.innerHTML = '<div class="streaming-text"></div>';
+        }
+
+        const time = document.createElement("div");
+        time.className = "message-time";
+        time.textContent = timestamp || getCurrentTime();
+
+        messageDiv.appendChild(bubble);
+        messageDiv.appendChild(time);
+
+        chatMessages.appendChild(messageDiv);
+        scrollToBottom();
+
+        return messageDiv;
+      }
+
+      function showTyping() {
+        typingIndicator.classList.add("show");
+        scrollToBottom();
+      }
+
+      function hideTyping() {
+        typingIndicator.classList.remove("show");
+      }
+
+      function setInputState(disabled) {
+        chatInput.disabled = disabled;
+        sendBtn.disabled = disabled;
+
+        if (disabled) {
+          chatInput.placeholder = "Waiting for response...";
+        } else {
+          chatInput.placeholder = "Type your message...";
+        }
+      }
+
+      function enableNewChatButton() {
+        newChatBtn.classList.add("enabled");
+      }
+
+      function startNewChat() {
+        if (!newChatBtn.classList.contains("enabled")) return;
+
+        // Clear chat
+        chatMessages.innerHTML = `
+          <div class="empty-state">
+            <h2>Welcome to RooCode Chat</h2>
+            <p>Start a conversation by typing your message below. I'm here to help you with coding tasks and questions!</p>
+          </div>
+        `;
+
+        // Reset state
+        currentTaskId = null;
+        isWaitingForResponse = false;
+        currentStreamingMessage = null;
+        activeResponseElement = null;
+        newChatBtn.classList.remove("enabled");
+        setInputState(false);
+        hideTyping();
+
+        // Clear and focus input
+        chatInput.value = "";
+        chatInput.style.height = "auto";
+        setInputState(false);
+        setTimeout(() => {
+          setInputState(false);
+          chatInput.focus();
+        }, 100);
+      }
+
+      async function sendMessage() {
+        const message = chatInput.value.trim();
+        if (!message || isWaitingForResponse) return;
+
+        // Add user message
+        addMessage(message, true);
+
+        // Clear and reset input
+        chatInput.value = "";
+        chatInput.style.height = "auto";
+
+        // Update UI state
+        setInputState(true);
+        showTyping();
+        isWaitingForResponse = true;
+        enableNewChatButton();
+
+        try {
+          const url = `http://127.0.0.1:23333/api/v1/roo/task`;
+
+          const body = currentTaskId
+            ? { taskId: currentTaskId, task: message }
+            : { task: message };
+
+          showStatus("Connecting to RooCode...");
+
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          hideTyping();
+          showStatus("Receiving response...");
+
+          // Add agent message container for this response
+          const responseMessage = addMessage("", false);
+          activeResponseElement = responseMessage; // Track this as the active response
+          const streamingTextElement =
+            responseMessage.querySelector(".streaming-text");
+          let accumulatedText = "";
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            let currentEvent = "";
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                currentEvent = line.substring(7).trim();
+              } else if (line.startsWith("data: ")) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+
+                  if (currentEvent === "task_created" && data.taskId) {
+                    currentTaskId = data.taskId;
+                    showStatus("Task created, streaming response...");
+                  } else if (currentEvent === "message" && data.message) {
+                    // Always update this response message (don't check activeResponseElement)
+                    if (data.message.type === "say" && data.message.text) {
+                      accumulatedText = data.message.text;
+                      await animateText(
+                        streamingTextElement,
+                        accumulatedText,
+                        data.message.partial,
+                      );
+                    } else if (
+                      data.message.type === "ask" &&
+                      data.message.ask === "followup" &&
+                      data.message.text
+                    ) {
+                      // Handle followup ask with suggestions
+                      try {
+                        const askData = JSON.parse(data.message.text);
+                        if (askData.question) {
+                          accumulatedText = askData.question;
+                          await animateText(
+                            streamingTextElement,
+                            accumulatedText,
+                            data.message.partial,
+                          );
+
+                          // Add suggestions if they exist
+                          if (
+                            askData.suggest &&
+                            Array.isArray(askData.suggest) &&
+                            askData.suggest.length > 0
+                          ) {
+                            addSuggestions(responseMessage, askData.suggest);
+                          }
+
+                          // Enable input for followup asks to allow user typing
+                          if (!data.message.partial) {
+                            isWaitingForResponse = false;
+                            setInputState(false);
+                            chatInput.focus();
+                          }
+                        }
+                      } catch (e) {
+                        console.error("Error parsing ask data:", e);
+                        accumulatedText = data.message.text;
+                        await animateText(
+                          streamingTextElement,
+                          accumulatedText,
+                          data.message.partial,
+                        );
+                      }
+                    }
+                  } else if (currentEvent === "task_completed") {
+                    showStatus("Response completed!");
+                    isWaitingForResponse = false;
+                    setInputState(false);
+                    chatInput.focus();
+                  } else if (
+                    currentEvent === "task_aborted" ||
+                    currentEvent === "error"
+                  ) {
+                    showStatus("Task ended with error");
+                    isWaitingForResponse = false;
+                    setInputState(false);
+                    if (streamingTextElement.textContent.trim() === "") {
+                      streamingTextElement.textContent =
+                        "Sorry, there was an error processing your request.";
+                    }
+                    chatInput.focus();
+                  }
+                } catch (e) {
+                  console.error("Error parsing SSE data:", e);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Chat error:", error);
+          hideTyping();
+          showStatus(`Connection error: ${error.message}`);
+
+          if (responseMessage) {
+            const streamingTextElement =
+              responseMessage.querySelector(".streaming-text");
+            streamingTextElement.textContent =
+              "Sorry, I encountered a connection error. Please try again.";
+          } else {
+            addMessage(
+              "Sorry, I encountered a connection error. Please try again.",
+              false,
+            );
+          }
+
+          isWaitingForResponse = false;
+          setInputState(false);
+          chatInput.focus();
+        }
+      }
+
+      async function animateText(element, fullText, isPartial) {
+        return new Promise((resolve) => {
+          // Clear any existing timeout
+          if (streamingTimeout) {
+            clearTimeout(streamingTimeout);
+          }
+
+          const currentText = element.textContent.replace("|", "");
+
+          if (currentText.length >= fullText.length && !isPartial) {
+            element.textContent = fullText;
+            resolve();
+            return;
+          }
+
+          let displayIndex = currentText.length;
+
+          function typeNextChar() {
+            if (displayIndex < fullText.length) {
+              const newText = fullText.substring(0, displayIndex + 1);
+              element.textContent = newText + (isPartial ? "|" : "");
+              displayIndex++;
+              scrollToBottom();
+
+              // Random typing speed for more natural feel
+              streamingTimeout = setTimeout(typeNextChar, Math.random() * 10);
+            } else {
+              if (isPartial) {
+                element.textContent = fullText + "|";
+              } else {
+                element.textContent = fullText;
+              }
+              scrollToBottom();
+              resolve();
+            }
+          }
+
+          typeNextChar();
+        });
+      }
+
+      function addSuggestions(messageElement, suggestions) {
+        const bubble = messageElement.querySelector(".message-bubble");
+
+        // Create suggestions container
+        const suggestionsContainer = document.createElement("div");
+        suggestionsContainer.className = "suggestions-container";
+
+        // Add each suggestion with numbered list
+        suggestions.forEach((suggestion, index) => {
+          const suggestionItem = document.createElement("div");
+          suggestionItem.className = "suggestion-item";
+
+          const suggestionNumber = document.createElement("span");
+          suggestionNumber.className = "suggestion-number";
+          suggestionNumber.textContent = `${index + 1}.`;
+
+          const suggestionText = document.createElement("span");
+          suggestionText.className = "suggestion-text";
+          suggestionText.textContent = suggestion;
+
+          suggestionItem.appendChild(suggestionNumber);
+          suggestionItem.appendChild(suggestionText);
+
+          // Add click handler to send suggestion as user message
+          suggestionItem.addEventListener("click", () => {
+            handleSuggestionClick(suggestion);
+          });
+
+          suggestionsContainer.appendChild(suggestionItem);
+        });
+
+        bubble.appendChild(suggestionsContainer);
+        scrollToBottom();
+      }
+
+      function handleSuggestionClick(suggestionText) {
+        if (isWaitingForResponse) return;
+
+        // Set the suggestion text in the input and send it
+        chatInput.value = suggestionText;
+        sendMessage();
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", function () {
+        setInputState(false);
+        chatInput.focus();
+      });
+    </script>
+  </body>
+</html>
