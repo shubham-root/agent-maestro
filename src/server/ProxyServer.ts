@@ -1,6 +1,7 @@
 import Fastify, { FastifyInstance } from "fastify";
 import swagger from "@fastify/swagger";
 import cors from "@fastify/cors";
+import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";
 import { ExtensionController, ExtensionType } from "../core/controller";
 
@@ -14,7 +15,6 @@ export interface TaskResponse {
   id: string;
   status: "created" | "running" | "completed" | "failed";
   message: string;
-  timestamp: string;
 }
 
 const filteredSayTypes = ["api_req_started"];
@@ -117,11 +117,6 @@ export class ProxyServer {
           type: "string",
           description: "Status message",
         },
-        timestamp: {
-          type: "string",
-          format: "date-time",
-          description: "Task creation timestamp",
-        },
       },
     });
     this.fastify.addSchema({
@@ -191,7 +186,6 @@ export class ProxyServer {
                 id: "",
                 status: "completed",
                 message: "Currently Cline does not support returning message",
-                timestamp: new Date().toISOString(),
               };
 
               logger.info(`Created new Cline task: ${response.id}`);
@@ -298,7 +292,6 @@ export class ProxyServer {
                   sendSSE("message", {
                     taskId: handlerTaskId,
                     message,
-                    timestamp: new Date().toISOString(),
                   });
                 },
                 onTaskCompleted: (
@@ -314,19 +307,25 @@ export class ProxyServer {
                     taskId: handlerTaskId,
                     tokenUsage,
                     toolUsage,
-                    timestamp: new Date().toISOString(),
                   });
-                  // Close the SSE stream
-                  reply.raw.end();
+
+                  // Wait a bit since there still might be some messages coming in
+                  setTimeout(() => {
+                    // Close the SSE stream
+                    reply.raw.end();
+                  }, 30_000);
                 },
                 onTaskAborted: (handlerTaskId: string) => {
                   logger.warn(`Task aborted: ${handlerTaskId}`);
                   sendSSE("task_aborted", {
                     taskId: handlerTaskId,
-                    timestamp: new Date().toISOString(),
                   });
-                  // Close the SSE stream
-                  reply.raw.end();
+
+                  // Wait a bit since there still might be some messages coming in
+                  setTimeout(() => {
+                    // Close the SSE stream
+                    reply.raw.end();
+                  }, 30_000);
                 },
                 onTaskToolFailed: (
                   handlerTaskId: string,
@@ -340,7 +339,6 @@ export class ProxyServer {
                     taskId: handlerTaskId,
                     tool,
                     error,
-                    timestamp: new Date().toISOString(),
                   });
                 },
               };
@@ -396,10 +394,9 @@ export class ProxyServer {
 
                   // Send initial task created event
                   sendSSE("task_created", {
-                    taskId: newTaskId || `roo-${Date.now()}`,
+                    taskId: newTaskId || uuidv4(),
                     status: "created",
                     message: "Task created successfully",
-                    timestamp: new Date().toISOString(),
                   });
 
                   logger.info(
@@ -413,7 +410,6 @@ export class ProxyServer {
                     taskError instanceof Error
                       ? taskError.message
                       : "Unknown error occurred",
-                  timestamp: new Date().toISOString(),
                 });
                 reply.raw.end();
               }

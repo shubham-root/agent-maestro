@@ -425,6 +425,7 @@ controller.on("rooCodeActivated", (api) => {
 
 - Add the detailed contract of the SSE response
 - Use ZOD to add type constrain of controller?
+- Convert roo.html to a React App, and finish send message flow.
 
 ## License
 

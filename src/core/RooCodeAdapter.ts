@@ -116,7 +116,10 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
           toolUsage,
         );
         // Clean up handlers when task is completed
-        this.activeTaskHandlers.delete(taskId);
+        // Add a timeout to wait for unexpected occasional message events
+        setTimeout(() => {
+          this.activeTaskHandlers.delete(taskId);
+        }, 3_000);
       },
     );
 
