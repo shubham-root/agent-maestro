@@ -9,11 +9,27 @@ import {
 } from "@roo-code/types";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
 
+export interface TaskEventHandlers {
+  onMessage?: (taskId: string, message: any) => void;
+  onTaskCreated?: (taskId: string) => void;
+  onTaskStarted?: (taskId: string) => void;
+  onTaskCompleted?: (taskId: string, tokenUsage: any, toolUsage: any) => void;
+  onTaskAborted?: (taskId: string) => void;
+  onTaskPaused?: (taskId: string) => void;
+  onTaskUnpaused?: (taskId: string) => void;
+  onTaskModeSwitched?: (taskId: string, mode: string) => void;
+  onTaskSpawned?: (parentTaskId: string, childTaskId: string) => void;
+  onTaskAskResponded?: (taskId: string) => void;
+  onTaskTokenUsageUpdated?: (taskId: string, tokenUsage: any) => void;
+  onTaskToolFailed?: (taskId: string, tool: string, error: string) => void;
+}
+
 export interface RooCodeTaskOptions {
   configuration?: RooCodeSettings;
   text?: string;
   images?: string[];
   newTab?: boolean;
+  eventHandlers?: TaskEventHandlers;
 }
 
 /**
@@ -21,6 +37,8 @@ export interface RooCodeTaskOptions {
  * Handles RooCode-specific logic and API interactions
  */
 export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
+  private activeTaskHandlers: Map<string, TaskEventHandlers> = new Map();
+
   constructor() {
     super();
   }
@@ -43,7 +61,7 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
    * Perform any post-activation setup
    */
   protected async postActivation(): Promise<void> {
-    this.registerEventListeners();
+    this.registerGlobalEventListeners();
   }
 
   /**
@@ -54,30 +72,35 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
   }
 
   /**
-   * Register event listeners using this.api.on()
+   * Register global event listeners for logging and task handler forwarding
    */
-  private registerEventListeners(): void {
+  private registerGlobalEventListeners(): void {
     if (!this.api) {
       logger.error("RooCode API not available for event listeners");
       return;
     }
 
-    // Listen for message events
+    // Forward events to task-specific handlers
     this.api.on(RooCodeEventName.Message, (data) => {
       logger.info("RooCode Message Event:", JSON.stringify(data, null, 2));
+      this.forwardEventToTaskHandlers(
+        data.taskId,
+        "onMessage",
+        data.taskId,
+        data.message,
+      );
     });
 
-    // Listen for task created events
     this.api.on(RooCodeEventName.TaskCreated, (taskId) => {
       logger.info(`RooCode Task Created: ${taskId}`);
+      this.forwardEventToTaskHandlers(taskId, "onTaskCreated", taskId);
     });
 
-    // Listen for task started events
     this.api.on(RooCodeEventName.TaskStarted, (taskId) => {
       logger.info(`RooCode Task Started: ${taskId}`);
+      this.forwardEventToTaskHandlers(taskId, "onTaskStarted", taskId);
     });
 
-    // Listen for task completed events
     this.api.on(
       RooCodeEventName.TaskCompleted,
       (taskId, tokenUsage, toolUsage) => {
@@ -85,53 +108,104 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
           tokenUsage,
           toolUsage,
         });
+        this.forwardEventToTaskHandlers(
+          taskId,
+          "onTaskCompleted",
+          taskId,
+          tokenUsage,
+          toolUsage,
+        );
+        // Clean up handlers when task is completed
+        this.activeTaskHandlers.delete(taskId);
       },
     );
 
-    // Listen for task aborted events
     this.api.on(RooCodeEventName.TaskAborted, (taskId) => {
       logger.info(`RooCode Task Aborted: ${taskId}`);
+      this.forwardEventToTaskHandlers(taskId, "onTaskAborted", taskId);
+      // Clean up handlers when task is aborted
+      this.activeTaskHandlers.delete(taskId);
     });
 
-    // Listen for task paused events
     this.api.on(RooCodeEventName.TaskPaused, (taskId) => {
       logger.info(`RooCode Task Paused: ${taskId}`);
+      this.forwardEventToTaskHandlers(taskId, "onTaskPaused", taskId);
     });
 
-    // Listen for task unpaused events
     this.api.on(RooCodeEventName.TaskUnpaused, (taskId) => {
       logger.info(`RooCode Task Unpaused: ${taskId}`);
+      this.forwardEventToTaskHandlers(taskId, "onTaskUnpaused", taskId);
     });
 
-    // Listen for task mode switched events
     this.api.on(RooCodeEventName.TaskModeSwitched, (taskId, mode) => {
       logger.info(`RooCode Task Mode Switched: ${taskId} -> ${mode}`);
+      this.forwardEventToTaskHandlers(
+        taskId,
+        "onTaskModeSwitched",
+        taskId,
+        mode,
+      );
     });
 
-    // Listen for task spawned events
     this.api.on(RooCodeEventName.TaskSpawned, (parentTaskId, childTaskId) => {
       logger.info(`RooCode Task Spawned: ${parentTaskId} -> ${childTaskId}`);
+      this.forwardEventToTaskHandlers(
+        parentTaskId,
+        "onTaskSpawned",
+        parentTaskId,
+        childTaskId,
+      );
     });
 
-    // Listen for task ask responded events
     this.api.on(RooCodeEventName.TaskAskResponded, (taskId) => {
       logger.info(`RooCode Task Ask Responded: ${taskId}`);
+      this.forwardEventToTaskHandlers(taskId, "onTaskAskResponded", taskId);
     });
 
-    // Listen for task token usage updated events
     this.api.on(
       RooCodeEventName.TaskTokenUsageUpdated,
       (taskId, tokenUsage) => {
         logger.info(`RooCode Task Token Usage Updated: ${taskId}`, tokenUsage);
+        this.forwardEventToTaskHandlers(
+          taskId,
+          "onTaskTokenUsageUpdated",
+          taskId,
+          tokenUsage,
+        );
       },
     );
 
-    // Listen for task tool failed events
     this.api.on(RooCodeEventName.TaskToolFailed, (taskId, tool, error) => {
       logger.error(`RooCode Task Tool Failed: ${taskId} - ${tool}`, error);
+      this.forwardEventToTaskHandlers(
+        taskId,
+        "onTaskToolFailed",
+        taskId,
+        tool,
+        error,
+      );
     });
+  }
 
-    logger.info("RooCode event listeners registered successfully");
+  /**
+   * Forward events to task-specific handlers
+   */
+  private forwardEventToTaskHandlers(
+    taskId: string,
+    handlerName: keyof TaskEventHandlers,
+    ...args: any[]
+  ): void {
+    const handlers = this.activeTaskHandlers.get(taskId);
+    if (handlers && handlers[handlerName]) {
+      try {
+        (handlers[handlerName] as Function)(...args);
+      } catch (error) {
+        logger.error(
+          `Error in task event handler ${handlerName} for task ${taskId}:`,
+          error,
+        );
+      }
+    }
   }
 
   /**
@@ -143,7 +217,20 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
     }
 
     logger.info("Starting new RooCode task");
-    return await this.api.startNewTask(options);
+
+    // Extract event handlers from options before passing to API
+    const { eventHandlers, ...apiOptions } = options;
+
+    // Start the task
+    const taskId = await this.api.startNewTask(apiOptions);
+
+    // Register event handlers for this specific task
+    if (eventHandlers && taskId) {
+      this.activeTaskHandlers.set(taskId, eventHandlers);
+      logger.info(`Registered event handlers for task: ${taskId}`);
+    }
+
+    return taskId;
   }
 
   /**
@@ -309,6 +396,21 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
 
     logger.info(`Creating RooCode profile: ${name}`);
     return await this.api.createProfile(name, profile, activate);
+  }
+
+  /**
+   * Remove event handlers for a specific task
+   */
+  removeTaskEventHandlers(taskId: string): void {
+    this.activeTaskHandlers.delete(taskId);
+    logger.info(`Removed event handlers for task: ${taskId}`);
+  }
+
+  /**
+   * Get active task IDs that have event handlers
+   */
+  getActiveTaskIds(): string[] {
+    return Array.from(this.activeTaskHandlers.keys());
   }
 
   /**

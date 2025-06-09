@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RooCode Task Demo</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      textarea {
+        width: 100%;
+        height: 100px;
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: Arial, sans-serif;
+        resize: vertical;
+      }
+      button {
+        padding: 12px 24px;
+        margin-right: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        font-weight: bold;
+      }
+      .status.connecting {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+      }
+      .status.connected {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .status.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .messages {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        height: 500px;
+        overflow-y: auto;
+        padding: 15px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+      }
+      .message {
+        margin-bottom: 15px;
+        padding: 8px;
+        border-left: 4px solid #007bff;
+        background-color: white;
+        border-radius: 4px;
+      }
+      .message.task_created {
+        border-left-color: #28a745;
+      }
+      .message.task_started {
+        border-left-color: #17a2b8;
+      }
+      .message.message {
+        border-left-color: #6f42c1;
+      }
+      .message.task_completed {
+        border-left-color: #28a745;
+        background-color: #d4edda;
+      }
+      .message.task_aborted {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+      }
+      .message.error {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+      }
+      .message-header {
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 5px;
+      }
+      .message-time {
+        font-size: 11px;
+        color: #6c757d;
+        float: right;
+      }
+      .message-content {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .clear-btn {
+        background-color: #6c757d;
+      }
+      .clear-btn:hover {
+        background-color: #5a6268;
+      }
+      .streaming-section {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .streaming-display {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        min-height: 200px;
+        max-height: 500px;
+        padding: 15px;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .streaming-message {
+        border-bottom: 1px solid #e9ecef;
+        padding: 10px 0;
+        margin-bottom: 10px;
+      }
+      .streaming-message:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+      }
+      .streaming-message-header {
+        font-size: 12px;
+        color: #6c757d;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .streaming-message-status {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background-color: #e9ecef;
+        color: #495057;
+      }
+      .streaming-message-status.partial {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .streaming-message-status.complete {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .streaming-text {
+        color: #495057;
+        line-height: 1.5;
+        margin-top: 5px;
+      }
+      .typing-cursor {
+        animation: blink 1s infinite;
+        color: #007bff;
+      }
+      @keyframes blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
+      }
+      .stream-controls {
+        margin-top: 15px;
+      }
+      .demo-btn {
+        background-color: #28a745;
+      }
+      .demo-btn:hover {
+        background-color: #218838;
+      }
+      .stop-btn {
+        background-color: #dc3545;
+      }
+      .stop-btn:hover {
+        background-color: #c82333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🚀 RooCode Task Demo</h1>
+      <p>Test the RooCode task API with real-time streaming messages</p>
+    </div>
+
+    <div class="container">
+      <h3>Task Configuration</h3>
+      <textarea
+        id="taskInput"
+        placeholder="Enter your task description here..."
+      >
+Create a simple calculator HTML page with basic operations (add, subtract, multiply, divide)</textarea
+      >
+      <div>
+        <button id="startTask" onclick="startTask()">Start Task</button>
+        <button id="clearMessages" onclick="clearMessages()" class="clear-btn">
+          Clear Messages
+        </button>
+      </div>
+    </div>
+
+    <div class="streaming-section">
+      <h3>💬 Streaming Response</h3>
+      <p>
+        All streaming messages grouped by timestamp. Messages marked as
+        'partial' continue streaming until 'complete':
+      </p>
+      <div id="streamingDisplay" class="streaming-display">
+        <span class="streaming-text" id="streamingText"></span>
+      </div>
+      <div class="stream-controls">
+        <button onclick="startStreamingDemo()" class="demo-btn">
+          Start Demo
+        </button>
+        <button onclick="stopStreaming()" class="stop-btn">Stop</button>
+        <button onclick="clearStreamingDisplay()" class="clear-btn">
+          Clear
+        </button>
+      </div>
+    </div>
+
+    <div class="container">
+      <h3>Task Status & Messages</h3>
+      <div id="status" class="status" style="display: none"></div>
+      <div id="messages" class="messages"></div>
+    </div>
+
+    <script>
+      let isTaskRunning = false;
+      const startButton = document.getElementById("startTask");
+      const statusDiv = document.getElementById("status");
+      const messagesDiv = document.getElementById("messages");
+
+      function updateStatus(message, type = "connecting") {
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+        statusDiv.style.display = "block";
+      }
+
+      // Streaming response functionality
+      let streamingMessages = []; // Array to store messages
+      let streamingTimeout = null;
+      let lastMessageWasPartial = false;
+
+      function updateStreamingResponse(text, isPartial, timestamp) {
+        const streamingDisplay = document.getElementById("streamingDisplay");
+
+        // If no timestamp provided, use current time
+        if (!timestamp) {
+          timestamp = Date.now();
+        }
+
+        // Check if we need to create a new message
+        // Create new message if: no messages exist, or previous was not partial and current is partial
+        let shouldCreateNew =
+          streamingMessages.length === 0 ||
+          (!lastMessageWasPartial && isPartial);
+
+        let messageData;
+        if (shouldCreateNew) {
+          // Create new message
+          messageData = {
+            timestamp: timestamp,
+            text: "",
+            isPartial: true,
+            element: null,
+            textElement: null,
+            statusElement: null,
+          };
+          streamingMessages.push(messageData);
+
+          // Create message element
+          const messageDiv = document.createElement("div");
+          messageDiv.className = "streaming-message";
+
+          const headerDiv = document.createElement("div");
+          headerDiv.className = "streaming-message-header";
+
+          const timestampSpan = document.createElement("span");
+          timestampSpan.textContent = new Date(timestamp).toLocaleTimeString();
+
+          const statusSpan = document.createElement("span");
+          statusSpan.className = "streaming-message-status partial";
+          statusSpan.textContent = "Streaming...";
+
+          headerDiv.appendChild(timestampSpan);
+          headerDiv.appendChild(statusSpan);
+
+          const textDiv = document.createElement("div");
+          textDiv.className = "streaming-text";
+
+          messageDiv.appendChild(headerDiv);
+          messageDiv.appendChild(textDiv);
+          streamingDisplay.appendChild(messageDiv);
+
+          messageData.element = messageDiv;
+          messageData.textElement = textDiv;
+          messageData.statusElement = statusSpan;
+        } else {
+          // Use the last message
+          messageData = streamingMessages[streamingMessages.length - 1];
+        }
+
+        // Update message content
+        messageData.text = text;
+        messageData.isPartial = isPartial;
+        lastMessageWasPartial = isPartial;
+
+        // Clear any existing timeout
+        if (streamingTimeout) {
+          clearTimeout(streamingTimeout);
+        }
+
+        if (isPartial) {
+          // Simulate typing effect
+          let displayedLength = messageData.textElement.textContent.replace(
+            "|",
+            "",
+          ).length;
+          if (displayedLength < text.length) {
+            const newText = text.slice(displayedLength);
+            const chars = newText.split("");
+            let charIndex = 0;
+
+            function addNextChar() {
+              if (charIndex < chars.length && messageData.isPartial) {
+                const currentText = messageData.textElement.textContent.replace(
+                  "|",
+                  "",
+                );
+                messageData.textElement.textContent =
+                  currentText + chars[charIndex] + "|";
+                charIndex++;
+
+                // Scroll to bottom
+                streamingDisplay.scrollTop = streamingDisplay.scrollHeight;
+
+                // Random delay between 20-60ms for realistic typing
+                streamingTimeout = setTimeout(
+                  addNextChar,
+                  Math.random() * 40 + 20,
+                );
+              }
+            }
+            addNextChar();
+          } else {
+            // Add typing cursor if not present
+            if (!messageData.textElement.textContent.endsWith("|")) {
+              messageData.textElement.textContent = text + "|";
+            }
+          }
+
+          messageData.statusElement.textContent = "Streaming...";
+          messageData.statusElement.className =
+            "streaming-message-status partial";
+        } else {
+          // Message is complete
+          messageData.textElement.textContent = text;
+          messageData.statusElement.textContent = "Complete";
+          messageData.statusElement.className =
+            "streaming-message-status complete";
+
+          // Scroll to bottom
+          streamingDisplay.scrollTop = streamingDisplay.scrollHeight;
+        }
+      }
+
+      function startStreamingDemo() {
+        clearStreamingDisplay();
+        updateStreamingResponse(
+          "Demo: This is how streaming responses appear character by character...",
+          true,
+        );
+        setTimeout(() => {
+          updateStreamingResponse(
+            "Demo: This is how streaming responses appear character by character... Try starting a real task to see live streaming!",
+            false,
+          );
+        }, 3000);
+      }
+
+      function stopStreaming() {
+        if (streamingTimeout) {
+          clearTimeout(streamingTimeout);
+          streamingTimeout = null;
+        }
+      }
+
+      function clearStreamingDisplay() {
+        stopStreaming();
+        streamingMessages = [];
+        lastMessageWasPartial = false;
+        document.getElementById("streamingDisplay").innerHTML =
+          '<span class="streaming-text" id="streamingText"></span>';
+      }
+
+      function addMessage(eventType, data) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${eventType}`;
+
+        // Use timestamp from data if available, otherwise current time
+        const timestamp = data.ts
+          ? new Date(data.ts).toLocaleTimeString()
+          : new Date().toLocaleTimeString();
+        const header = document.createElement("div");
+        header.className = "message-header";
+        header.innerHTML = `${eventType.toUpperCase()} <span class="message-time">${timestamp}</span>`;
+
+        const content = document.createElement("div");
+        content.className = "message-content";
+
+        // Format the message content based on event type
+        if (eventType === "message" && data.message) {
+          if (data.message.type === "say" && data.message.text) {
+            // Update streaming response with timestamp
+            const timestamp = data.ts || Date.now();
+            updateStreamingResponse(
+              data.message.text,
+              data.message.partial,
+              timestamp,
+            );
+
+            content.textContent = `${data.message.text}${data.message.partial ? " (partial)" : " (complete)"}`;
+          } else if (data.message.type === "ask") {
+            content.textContent = `ASK: ${data.message.ask}`;
+          } else {
+            content.textContent = JSON.stringify(data.message, null, 2);
+          }
+        } else if (eventType === "task_created") {
+          content.textContent = `Task ID: ${data.taskId}\nStatus: ${data.status}\nMessage: ${data.message}`;
+        } else if (eventType === "task_completed") {
+          content.textContent = `Task ID: ${data.taskId}\nToken Usage: ${JSON.stringify(data.tokenUsage, null, 2)}\nTool Usage: ${JSON.stringify(data.toolUsage, null, 2)}`;
+        } else if (eventType === "task_aborted") {
+          content.textContent = `Task ID: ${data.taskId} was aborted`;
+        } else if (eventType === "error") {
+          content.textContent = `Error: ${data.error}`;
+        } else {
+          content.textContent = JSON.stringify(data, null, 2);
+        }
+
+        messageDiv.appendChild(header);
+        messageDiv.appendChild(content);
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      async function startTask() {
+        const task = document.getElementById("taskInput").value.trim();
+        if (!task) {
+          alert("Please enter a task description");
+          return;
+        }
+
+        if (isTaskRunning) {
+          alert("A task is already running");
+          return;
+        }
+
+        isTaskRunning = true;
+        startButton.disabled = true;
+        startButton.textContent = "Task Running...";
+
+        updateStatus("Connecting to RooCode API...", "connecting");
+
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:23333/api/v1/roo/task",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ task }),
+            },
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          updateStatus("Connected - Receiving task updates...", "connected");
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+            let currentEvent = "";
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                currentEvent = line.substring(7).trim();
+              } else if (line.startsWith("data: ")) {
+                try {
+                  const data = JSON.parse(line.substring(6));
+                  addMessage(currentEvent, data);
+
+                  // Check if task is finished
+                  if (currentEvent === "task_completed") {
+                    updateStatus("Task completed successfully!", "connected");
+                    isTaskRunning = false;
+                    startButton.disabled = false;
+                    startButton.textContent = "Start Task";
+                  } else if (
+                    currentEvent === "task_aborted" ||
+                    currentEvent === "error"
+                  ) {
+                    updateStatus("Task ended with error/abort", "error");
+                    isTaskRunning = false;
+                    startButton.disabled = false;
+                    startButton.textContent = "Start Task";
+                  }
+                } catch (e) {
+                  console.error("Error parsing SSE data:", e, "Line:", line);
+                  addMessage("parse_error", { error: e.message, line: line });
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Task error:", error);
+          updateStatus(`Connection error: ${error.message}`, "error");
+          addMessage("connection_error", { error: error.message });
+          isTaskRunning = false;
+          startButton.disabled = false;
+          startButton.textContent = "Start Task";
+        }
+      }
+
+      function clearMessages() {
+        messagesDiv.innerHTML = "";
+        statusDiv.style.display = "none";
+      }
+
+      // Add sample tasks for quick testing
+      document.addEventListener("DOMContentLoaded", function () {
+        const sampleTasks = [
+          "Create a simple calculator HTML page with basic operations (add, subtract, multiply, divide)",
+          "Create a todo list app with add, delete, and mark complete functionality",
+          "Generate a random password generator webpage",
+          "Create a simple weather widget mockup with HTML and CSS",
+          "Build a contact form with validation",
+        ];
+
+        const textarea = document.getElementById("taskInput");
+        textarea.setAttribute(
+          "title",
+          "Sample tasks:\n" + sampleTasks.join("\n"),
+        );
+      });
+    </script>
+  </body>
+</html>

@@ -16,6 +16,8 @@ export interface TaskResponse {
   timestamp: string;
 }
 
+const filteredSayTypes = ["api_req_started"];
+
 export class ProxyServer {
   private fastify: FastifyInstance;
   private controller: ExtensionController;
@@ -201,20 +203,28 @@ export class ProxyServer {
           },
         );
 
-        // POST /api/v1/roo-code/task - Create new RooCode task
+        // POST /api/v1/roo/task - Create new RooCode task with SSE stream
         fastify.post(
-          "/roo-code/task",
+          "/roo/task",
           {
             schema: {
               tags: ["Tasks"],
-              summary: "Create a new RooCode task",
+              summary: "Create a new RooCode task with event stream",
               description:
-                "Creates and starts a new task using the RooCode extension",
+                "Creates and starts a new task using the RooCode extension, returns Server-Sent Events stream",
               body: { $ref: "TaskRequest#" },
               response: {
                 200: {
-                  description: "Task created successfully",
-                  $ref: "TaskResponse#",
+                  description: "Server-Sent Events stream for task progress",
+                  type: "string",
+                  headers: {
+                    "Content-Type": {
+                      type: "string",
+                      example: "text/event-stream",
+                    },
+                    "Cache-Control": { type: "string", example: "no-cache" },
+                    Connection: { type: "string", example: "keep-alive" },
+                  },
                 },
                 400: {
                   description: "Bad request - invalid input",
@@ -247,20 +257,118 @@ export class ProxyServer {
                 });
               }
 
-              const taskId = await this.controller.startNewTask(
-                { task, images },
-                ExtensionType.ROO_CODE,
+              // Set up SSE headers
+              reply.raw.setHeader("Content-Type", "text/event-stream");
+              reply.raw.setHeader("Cache-Control", "no-cache");
+              reply.raw.setHeader("Connection", "keep-alive");
+              reply.raw.setHeader("Access-Control-Allow-Origin", "*");
+              reply.raw.setHeader(
+                "Access-Control-Allow-Headers",
+                "Cache-Control",
               );
 
-              const response: TaskResponse = {
-                id: taskId || `roo-code-${Date.now()}`,
-                status: "created",
-                message: "Task created successfully",
-                timestamp: new Date().toISOString(),
+              // Helper function to send SSE data
+              const sendSSE = (eventType: string, data: any) => {
+                const sseData = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
+                reply.raw.write(sseData);
               };
 
-              logger.info(`Created new RooCode task: ${response.id}`);
-              return reply.send(response);
+              // Define event handlers for streaming task events
+              const eventHandlers = {
+                onMessage: (taskId: string, message: any) => {
+                  logger.info(`Task ${taskId} - Message:`, message);
+                  if (filteredSayTypes.includes(message.say)) {
+                    return;
+                  }
+                  sendSSE("message", {
+                    taskId,
+                    message,
+                    timestamp: new Date().toISOString(),
+                  });
+                },
+                onTaskCompleted: (
+                  taskId: string,
+                  tokenUsage: any,
+                  toolUsage: any,
+                ) => {
+                  logger.info(`Task completed: ${taskId}`, {
+                    tokenUsage,
+                    toolUsage,
+                  });
+                  sendSSE("task_completed", {
+                    taskId,
+                    tokenUsage,
+                    toolUsage,
+                    timestamp: new Date().toISOString(),
+                  });
+                  // Close the SSE stream
+                  reply.raw.end();
+                },
+                onTaskAborted: (taskId: string) => {
+                  logger.warn(`Task aborted: ${taskId}`);
+                  sendSSE("task_aborted", {
+                    taskId,
+                    timestamp: new Date().toISOString(),
+                  });
+                  // Close the SSE stream
+                  reply.raw.end();
+                },
+                onTaskToolFailed: (
+                  taskId: string,
+                  tool: string,
+                  error: string,
+                ) => {
+                  logger.error(
+                    `Tool failed in task ${taskId}: ${tool} - ${error}`,
+                  );
+                  sendSSE("tool_failed", {
+                    taskId,
+                    tool,
+                    error,
+                    timestamp: new Date().toISOString(),
+                  });
+                },
+              };
+
+              // Handle client disconnect
+              request.raw.on("close", () => {
+                logger.info("Client disconnected from SSE stream");
+              });
+
+              request.raw.on("error", (err) => {
+                logger.error("SSE stream error:", err);
+              });
+
+              try {
+                const taskId = await this.controller.startNewTask(
+                  {
+                    task,
+                    images,
+                    eventHandlers,
+                  },
+                  ExtensionType.ROO_CODE,
+                );
+
+                // Send initial task created event
+                sendSSE("task_created", {
+                  taskId: taskId || `roo-${Date.now()}`,
+                  status: "created",
+                  message: "Task created successfully",
+                  timestamp: new Date().toISOString(),
+                });
+
+                logger.info(`Created new RooCode task with SSE: ${taskId}`);
+              } catch (taskError) {
+                logger.error("Error starting RooCode task:", taskError);
+                sendSSE("error", {
+                  error:
+                    taskError instanceof Error
+                      ? taskError.message
+                      : "Unknown error occurred",
+                  timestamp: new Date().toISOString(),
+                });
+                reply.raw.end();
+              }
             } catch (error) {
               logger.error("Error creating RooCode task:", error);
               return reply.status(500).send({

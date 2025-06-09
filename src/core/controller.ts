@@ -5,6 +5,7 @@ import { logger } from "../utils/logger";
 import { ClineAdapter } from "./ClineAdapter";
 import { RooCodeAdapter } from "./RooCodeAdapter";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
+import { TaskEventHandlers, RooCodeTaskOptions } from "./RooCodeAdapter";
 
 export interface ExtensionStatus {
   isInstalled: boolean;
@@ -17,11 +18,12 @@ export interface UnifiedTaskOptions {
   images?: string[];
   configuration?: RooCodeSettings;
   newTab?: boolean;
+  eventHandlers?: TaskEventHandlers;
 }
 
 export enum ExtensionType {
   CLINE = "cline",
-  ROO_CODE = "roo-code",
+  ROO_CODE = "roo",
 }
 
 /**
@@ -90,7 +92,7 @@ export class ExtensionController extends EventEmitter {
   /**
    * Unified API: Start a new task
    * @param options Task options
-   * @param extensionType Which extension to use (defaults to "roo-code")
+   * @param extensionType Which extension to use (defaults to "roo")
    */
   async startNewTask(
     options: UnifiedTaskOptions,
@@ -110,9 +112,10 @@ export class ExtensionController extends EventEmitter {
           text: options.task,
           images: options.images,
           newTab: options.newTab ?? true,
-          // newTab: options.newTab,
+          eventHandlers: options.eventHandlers,
         });
       default:
+        throw new Error(`Unsupported extension type: ${extensionType}`);
     }
   }
 
@@ -120,7 +123,7 @@ export class ExtensionController extends EventEmitter {
    * Unified API: Send message to current task
    * @param message Message to send
    * @param images Optional images
-   * @param extensionType Which extension to use (defaults to "roo-code")
+   * @param extensionType Which extension to use (defaults to "roo")
    */
   async sendMessage(
     message?: string,
@@ -133,7 +136,7 @@ export class ExtensionController extends EventEmitter {
 
   /**
    * Unified API: Press primary button
-   * @param extensionType Which extension to use (defaults to "roo-code")
+   * @param extensionType Which extension to use (defaults to "roo")
    */
   async pressPrimaryButton(
     extensionType = ExtensionType.ROO_CODE,
@@ -144,7 +147,7 @@ export class ExtensionController extends EventEmitter {
 
   /**
    * Unified API: Press secondary button
-   * @param extensionType Which extension to use (defaults to "roo-code")
+   * @param extensionType Which extension to use (defaults to "roo")
    */
   async pressSecondaryButton(
     extensionType = ExtensionType.ROO_CODE,
@@ -162,6 +165,20 @@ export class ExtensionController extends EventEmitter {
 
   async setCustomInstructions(value: string): Promise<void> {
     await this.clineAdapter.setCustomInstructions(value);
+  }
+
+  /**
+   * Remove event handlers for a specific task (delegates to RooCodeAdapter)
+   */
+  removeTaskEventHandlers(taskId: string): void {
+    this.rooCodeAdapter.removeTaskEventHandlers(taskId);
+  }
+
+  /**
+   * Get active task IDs that have event handlers (delegates to RooCodeAdapter)
+   */
+  getActiveTaskIds(): string[] {
+    return this.rooCodeAdapter.getActiveTaskIds();
   }
 
   /**
