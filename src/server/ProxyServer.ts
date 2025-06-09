@@ -11,12 +11,6 @@ export interface TaskRequest {
   taskId?: string;
 }
 
-export interface TaskResponse {
-  id: string;
-  status: "created" | "running" | "completed" | "failed";
-  message: string;
-}
-
 const filteredSayTypes = ["api_req_started"];
 
 export class ProxyServer {
@@ -182,7 +176,7 @@ export class ProxyServer {
                 ExtensionType.CLINE,
               );
 
-              const response: TaskResponse = {
+              const response = {
                 id: "",
                 status: "completed",
                 message: "Currently Cline does not support returning message",
