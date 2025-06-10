@@ -255,6 +255,69 @@ export default function RooPage() {
                       textareaRef.current.focus();
                     }
                   }
+                } else if (
+                  data.message.type === "ask" &&
+                  data.message.ask === "use_mcp_server" &&
+                  data.message.text
+                ) {
+                  // Handle use_mcp_server ask type
+                  let finalContent = "";
+                  let suggestions: string[] = ["Approve", "Reject"];
+
+                  try {
+                    const mcpData = JSON.parse(data.message.text);
+                    const serverName = mcpData.serverName || "Unknown Server";
+                    const toolName = mcpData.toolName || "Unknown Tool";
+
+                    let argumentsText = "";
+                    if (mcpData.arguments) {
+                      try {
+                        const args =
+                          typeof mcpData.arguments === "string"
+                            ? JSON.parse(mcpData.arguments)
+                            : mcpData.arguments;
+                        argumentsText = JSON.stringify(args, null, 2);
+                      } catch (e) {
+                        argumentsText = mcpData.arguments.toString();
+                      }
+                    }
+
+                    finalContent = `🔧 MCP Server Tool Request\n\nServer: ${serverName}\nTool: ${toolName}\nArguments:\n${argumentsText}\n\nDo you want to approve this MCP tool usage?`;
+                  } catch (e) {
+                    console.error("Failed to parse MCP server data:", e);
+                    finalContent =
+                      "🔧 MCP Server Tool Request\n\nDo you want to approve this MCP tool usage?";
+                  }
+
+                  if (currentAgentMessageId) {
+                    // Update the existing message with final content and suggestions
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.id === currentAgentMessageId
+                          ? { ...msg, content: finalContent, suggestions }
+                          : msg,
+                      ),
+                    );
+                  } else {
+                    // Create new message
+                    const newAgentMessageId = uuidv4();
+                    const newAgentMessage: Message = {
+                      id: newAgentMessageId,
+                      content: finalContent,
+                      isUser: false,
+                      timestamp: getCurrentTime(),
+                      suggestions,
+                    };
+                    setMessages((prev) => [...prev, newAgentMessage]);
+                  }
+
+                  setTimeout(() => {
+                    currentAgentMessageId = null;
+                  }, 1);
+                  setIsWaitingForResponse(false);
+                  if (textareaRef.current) {
+                    textareaRef.current.focus();
+                  }
                 }
               } else if (currentEvent === "task_completed") {
                 showStatusMessage("Response completed! Finalizing...");
