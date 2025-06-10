@@ -361,12 +361,6 @@ export class ProxyServer {
                     await this.controller.rooCodeAdapter.resumeTask(taskId);
                   }
 
-                  // Register event handlers for this specific task to stream responses
-                  this.controller.rooCodeAdapter.registerTaskEventHandlers(
-                    taskId,
-                    eventHandlers,
-                  );
-
                   // Send the message
                   await this.controller.sendMessage(
                     task,

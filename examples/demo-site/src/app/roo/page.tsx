@@ -219,19 +219,12 @@ export default function RooPage() {
                       const askData = JSON.parse(data.message.text);
                       if (askData.question) {
                         finalContent = askData.question;
-                        suggestions =
-                          askData.suggest && Array.isArray(askData.suggest)
-                            ? askData.suggest
-                            : [];
+                      }
+                      if (askData.suggest && Array.isArray(askData.suggest)) {
+                        suggestions = askData.suggest;
                       }
                     } catch (e) {
-                      // If not JSON, treat as plain text and look for suggestions in options
-                      if (
-                        data.message.options &&
-                        Array.isArray(data.message.options)
-                      ) {
-                        suggestions = data.message.options;
-                      }
+                      console.error("Failed to parse ask data as JSON:", e);
                     }
 
                     if (currentAgentMessageId) {
@@ -256,7 +249,9 @@ export default function RooPage() {
                       setMessages((prev) => [...prev, newAgentMessage]);
                     }
 
-                    currentAgentMessageId = null;
+                    setTimeout(() => {
+                      currentAgentMessageId = null;
+                    }, 1);
                     setIsWaitingForResponse(false);
                     if (textareaRef.current) {
                       textareaRef.current.focus();

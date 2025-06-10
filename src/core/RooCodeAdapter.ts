@@ -32,6 +32,11 @@ export interface RooCodeTaskOptions {
   eventHandlers?: TaskEventHandlers;
 }
 
+export interface SendMessageOptions {
+  taskId: string;
+  eventHandlers?: TaskEventHandlers;
+}
+
 /**
  * Dedicated adapter for RooCode extension management
  * Handles RooCode-specific logic and API interactions
@@ -297,13 +302,28 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
   /**
    * Send message to current task
    */
-  async sendMessage(message?: string, images?: string[]): Promise<void> {
+  async sendMessage(
+    message?: string,
+    images?: string[],
+    options?: SendMessageOptions,
+  ): Promise<void> {
     if (!this.api) {
       throw new Error("RooCode API not available");
     }
 
     logger.info("Sending message to RooCode current task");
+
+    // Extract event handlers from options before passing to API
+    const { eventHandlers, taskId } = options || {};
+
+    // Send the message
     await this.api.sendMessage(message, images);
+
+    // Register event handlers for this specific task if provided
+    if (eventHandlers && taskId && !this.activeTaskHandlers.has(taskId)) {
+      this.activeTaskHandlers.set(taskId, eventHandlers);
+      logger.info(`Registered event handlers for task: ${taskId}`);
+    }
   }
 
   /**
@@ -399,19 +419,6 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
 
     logger.info(`Creating RooCode profile: ${name}`);
     return await this.api.createProfile(name, profile, activate);
-  }
-
-  /**
-   * Register event handlers for an existing task
-   */
-  registerTaskEventHandlers(
-    taskId: string,
-    eventHandlers: TaskEventHandlers,
-  ): void {
-    if (!this.activeTaskHandlers.has(taskId)) {
-      this.activeTaskHandlers.set(taskId, eventHandlers);
-      logger.info(`Registered event handlers for existing task: ${taskId}`);
-    }
   }
 
   /**
