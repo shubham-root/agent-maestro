@@ -1,24 +1,16 @@
 // import * as vscode from "vscode";
 import { EventEmitter } from "events";
-import { RooCodeSettings } from "@roo-code/types";
 import { logger } from "../utils/logger";
 import { ClineAdapter } from "./ClineAdapter";
 import { RooCodeAdapter } from "./RooCodeAdapter";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
-import { TaskEventHandlers, RooCodeTaskOptions } from "./RooCodeAdapter";
+import { RooCodeMessageOptions, RooCodeTaskOptions } from "./RooCodeAdapter";
+import { options } from "axios";
 
 export interface ExtensionStatus {
   isInstalled: boolean;
   isActive: boolean;
   version?: string;
-}
-
-export interface UnifiedTaskOptions {
-  task: string;
-  images?: string[];
-  configuration?: RooCodeSettings;
-  newTab?: boolean;
-  eventHandlers?: TaskEventHandlers;
 }
 
 export enum ExtensionType {
@@ -95,7 +87,7 @@ export class ExtensionController extends EventEmitter {
    * @param extensionType Which extension to use (defaults to "roo")
    */
   async startNewTask(
-    options: UnifiedTaskOptions,
+    options: RooCodeTaskOptions,
     extensionType = ExtensionType.ROO_CODE,
   ): Promise<string | void> {
     logger.info(`Starting new task with ${extensionType}`);
@@ -103,13 +95,13 @@ export class ExtensionController extends EventEmitter {
     switch (extensionType) {
       case ExtensionType.CLINE:
         return this.clineAdapter.startNewTask({
-          task: options.task,
+          task: options.text,
           images: options.images,
         });
       case ExtensionType.ROO_CODE:
         return await this.rooCodeAdapter.startNewTask({
           configuration: options.configuration,
-          text: options.task,
+          text: options.text,
           images: options.images,
           // newTab: options.newTab ?? true,
           eventHandlers: options.eventHandlers,
@@ -126,12 +118,22 @@ export class ExtensionController extends EventEmitter {
    * @param extensionType Which extension to use (defaults to "roo")
    */
   async sendMessage(
-    message?: string,
-    images?: string[],
+    data: RooCodeMessageOptions,
     extensionType = ExtensionType.ROO_CODE,
   ): Promise<void> {
     logger.info(`Sending message with ${extensionType}`);
-    await this.adapters[extensionType].sendMessage(message, images);
+
+    switch (extensionType) {
+      case ExtensionType.CLINE:
+        return this.clineAdapter.sendMessage(data.text, data.images);
+      case ExtensionType.ROO_CODE:
+        return await this.rooCodeAdapter.sendMessage(data.text, data.images, {
+          taskId: data.taskId ?? "",
+          eventHandlers: data.eventHandlers,
+        });
+      default:
+        throw new Error(`Unsupported extension type: ${extensionType}`);
+    }
   }
 
   /**

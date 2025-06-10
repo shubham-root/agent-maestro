@@ -24,12 +24,16 @@ export interface TaskEventHandlers {
   onTaskToolFailed?: (taskId: string, tool: string, error: string) => void;
 }
 
-export interface RooCodeTaskOptions {
-  configuration?: RooCodeSettings;
+export interface RooCodeMessageOptions {
+  taskId?: string;
   text?: string;
   images?: string[];
-  newTab?: boolean;
   eventHandlers?: TaskEventHandlers;
+}
+
+export interface RooCodeTaskOptions extends RooCodeMessageOptions {
+  configuration?: RooCodeSettings;
+  newTab?: boolean;
 }
 
 export interface SendMessageOptions {

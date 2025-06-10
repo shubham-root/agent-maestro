@@ -6,7 +6,7 @@ import { logger } from "../utils/logger";
 import { ExtensionController, ExtensionType } from "../core/controller";
 
 export interface TaskRequest {
-  task: string;
+  text: string;
   images?: string[];
   taskId?: string;
 }
@@ -76,11 +76,11 @@ export class ProxyServer {
     this.fastify.addSchema({
       $id: "TaskRequest",
       type: "object",
-      required: ["task"],
+      required: ["text"],
       properties: {
-        task: {
+        text: {
           type: "string",
-          description: "The task description to execute",
+          description: "The task query to execute",
         },
         images: {
           type: "array",
@@ -155,9 +155,9 @@ export class ProxyServer {
           },
           async (request, reply) => {
             try {
-              const { task, images } = request.body as TaskRequest;
+              const { text, images } = request.body as TaskRequest;
 
-              if (!task || task.trim() === "") {
+              if (!text || text.trim() === "") {
                 return reply.status(400).send({
                   status: "failed",
                   message: "Task description is required",
@@ -172,7 +172,7 @@ export class ProxyServer {
               }
 
               await this.controller.startNewTask(
-                { task, images },
+                { text, images },
                 ExtensionType.CLINE,
               );
 
@@ -234,12 +234,12 @@ export class ProxyServer {
           },
           async (request, reply) => {
             try {
-              const { task, images, taskId } = request.body as TaskRequest;
+              const { text, images, taskId } = request.body as TaskRequest;
 
-              if (!task || task.trim() === "") {
+              if (!text || text.trim() === "") {
                 return reply.status(400).send({
                   status: "failed",
-                  message: "Task description is required",
+                  message: "Task query is required",
                 });
               }
 
@@ -363,8 +363,12 @@ export class ProxyServer {
 
                   // Send the message
                   await this.controller.sendMessage(
-                    task,
-                    images,
+                    {
+                      text,
+                      images,
+                      taskId,
+                      eventHandlers,
+                    },
                     ExtensionType.ROO_CODE,
                   );
                 } else {
@@ -373,7 +377,7 @@ export class ProxyServer {
 
                   const newTaskId = await this.controller.startNewTask(
                     {
-                      task,
+                      text,
                       images,
                       eventHandlers,
                     },

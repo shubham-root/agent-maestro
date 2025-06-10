@@ -21,8 +21,6 @@ export default function RooPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [showStatus, setShowStatus] = useState(false);
 
-  console.log(messages);
-
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -347,7 +345,20 @@ export default function RooPage() {
       <div className="bg-white/95 backdrop-blur-md px-5 py-4 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🤖</span>
-          <h1 className="text-2xl font-normal text-gray-800">RooCode Chat</h1>
+          <h1 className="text-2xl font-normal text-gray-800">
+            RooCode Chat{" "}
+            <span className="text-sm text-gray-500">
+              powered by{" "}
+              <a
+                href="https://github.com/Joouis/agent-maestro"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-lg font-bold italic text-blue-500 hover:text-blue-500 hover:underline"
+              >
+                Agent Maestro
+              </a>
+            </span>
+          </h1>
         </div>
         <button
           onClick={handleNewChat}
