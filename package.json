@@ -1,6 +1,6 @@
 {
-  "name": "cline-maestro",
-  "displayName": "Cline Maestro",
+  "name": "agent-maestro",
+  "displayName": "Agent Maestro",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -18,6 +18,10 @@
   ],
   "keywords": [
     "cline",
+    "roo code",
+    "roocode",
+    "kilocode",
+    "vibe coding",
     "claude",
     "dev",
     "mcp",
@@ -29,10 +33,8 @@
     "sonnet",
     "ai",
     "llama",
-    "roo code",
-    "roocode",
-    "kilocode",
-    "vibe coding"
+    "github copilot",
+    "github copilot chat"
   ],
   "extensionDependencies": [],
   "activationEvents": [
@@ -43,39 +45,39 @@
   "contributes": {
     "commands": [
       {
-        "command": "cline-maestro.getStatus",
+        "command": "agent-maestro.getStatus",
         "title": "Get Extensions Status",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       },
       {
-        "command": "cline-maestro.startTask",
+        "command": "agent-maestro.startTask",
         "title": "Start New Task",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       },
       {
-        "command": "cline-maestro.startServer",
+        "command": "agent-maestro.startServer",
         "title": "Start API Server",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       },
       {
-        "command": "cline-maestro.stopServer",
+        "command": "agent-maestro.stopServer",
         "title": "Stop API Server",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       },
       {
-        "command": "cline-maestro.restartServer",
+        "command": "agent-maestro.restartServer",
         "title": "Restart API Server",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       },
       {
-        "command": "cline-maestro.getServerStatus",
+        "command": "agent-maestro.getServerStatus",
         "title": "Get API Server Status",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       },
       {
-        "command": "cline-maestro.sendMessage",
+        "command": "agent-maestro.sendMessage",
         "title": "Send Message to Active Task",
-        "category": "Cline Maestro"
+        "category": "Agent Maestro"
       }
     ]
   },

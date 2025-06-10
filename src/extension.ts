@@ -19,7 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
   } catch (error) {
     logger.error("Failed to initialize extension controller:", error);
     vscode.window.showErrorMessage(
-      `Cline Maestro: Failed to initialize - ${(error as Error).message}`,
+      `Agent Maestro: Failed to initialize - ${(error as Error).message}`,
     );
   }
 
@@ -27,12 +27,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Register commands
   const disposables = [
-    vscode.commands.registerCommand("cline-maestro.getStatus", () => {
+    vscode.commands.registerCommand("agent-maestro.getStatus", () => {
       const status = controller.getExtensionStatus();
       vscode.window.showInformationMessage(JSON.stringify(status, null, 2));
     }),
 
-    vscode.commands.registerCommand("cline-maestro.startTask", async () => {
+    vscode.commands.registerCommand("agent-maestro.startTask", async () => {
       try {
         const task = await vscode.window.showInputBox({
           prompt: "Enter task description",
@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("cline-maestro.startServer", async () => {
+    vscode.commands.registerCommand("agent-maestro.startServer", async () => {
       try {
         if (!proxy) {
           vscode.window.showErrorMessage("Proxy server not initialized");
@@ -94,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("cline-maestro.stopServer", async () => {
+    vscode.commands.registerCommand("agent-maestro.stopServer", async () => {
       try {
         if (!proxy) {
           vscode.window.showErrorMessage("Proxy server not initialized");
@@ -111,7 +111,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("cline-maestro.restartServer", async () => {
+    vscode.commands.registerCommand("agent-maestro.restartServer", async () => {
       try {
         if (!proxy) {
           vscode.window.showErrorMessage("Proxy server not initialized");
@@ -131,7 +131,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("cline-maestro.getServerStatus", () => {
+    vscode.commands.registerCommand("agent-maestro.getServerStatus", () => {
       if (!proxy) {
         vscode.window.showErrorMessage("Proxy server not initialized");
         return;
@@ -143,12 +143,12 @@ export async function activate(context: vscode.ExtensionContext) {
       );
     }),
 
-    vscode.commands.registerCommand("cline-maestro.sendMessage", async () => {
+    vscode.commands.registerCommand("agent-maestro.sendMessage", async () => {
       try {
         // Check if we have a last used extension
         if (!lastUsedExtension) {
           vscode.window.showWarningMessage(
-            "No previous extension called by Cline Maestro before. Please start a new task first.",
+            "No previous extension called by Agent Maestro before. Please start a new task first.",
           );
           return;
         }
@@ -182,7 +182,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(...disposables);
 
-  await vscode.commands.executeCommand("cline-maestro.startServer");
+  await vscode.commands.executeCommand("agent-maestro.startServer");
 
   return controller;
 }

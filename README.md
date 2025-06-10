@@ -1,4 +1,4 @@
-# Cline Maestro
+# Agent Maestro
 
 A unified controller for Cline and RooCode extensions that provides both VSCode extension API and local server access for external applications.
 
@@ -17,16 +17,16 @@ A unified controller for Cline and RooCode extensions that provides both VSCode 
    - [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) (Required)
    - [RooCode](https://marketplace.visualstudio.com/items?itemName=rooveterinaryinc.roo-cline) (Optional)
 
-2. Install Cline Maestro extension
+2. Install Agent Maestro extension
 
 ## VSCode Commands
 
 | Command                                | Description                                 |
 | -------------------------------------- | ------------------------------------------- |
-| `Cline Maestro: Start Local Server`    | Start the HTTP server for external access   |
-| `Cline Maestro: Stop Local Server`     | Stop the HTTP server                        |
-| `Cline Maestro: Get Extensions Status` | Show status of Cline and RooCode extensions |
-| `Cline Maestro: Start New Task`        | Start a new task with selected extension    |
+| `Agent Maestro: Start Local Server`    | Start the HTTP server for external access   |
+| `Agent Maestro: Stop Local Server`     | Stop the HTTP server                        |
+| `Agent Maestro: Get Extensions Status` | Show status of Cline and RooCode extensions |
+| `Agent Maestro: Start New Task`        | Start a new task with selected extension    |
 
 ## Core Controller API
 
