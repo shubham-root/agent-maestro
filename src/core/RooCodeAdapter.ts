@@ -324,7 +324,7 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
     await this.api.sendMessage(message, images);
 
     // Register event handlers for this specific task if provided
-    if (eventHandlers && taskId && !this.activeTaskHandlers.has(taskId)) {
+    if (eventHandlers && taskId) {
       this.activeTaskHandlers.set(taskId, eventHandlers);
       logger.info(`Registered event handlers for task: ${taskId}`);
     }

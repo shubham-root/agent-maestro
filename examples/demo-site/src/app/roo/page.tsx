@@ -88,8 +88,8 @@ export default function RooPage() {
     try {
       const url = `http://127.0.0.1:23333/api/v1/roo/task`;
       const body = currentTaskId
-        ? { taskId: currentTaskId, task: message }
-        : { task: message };
+        ? { taskId: currentTaskId, text: message }
+        : { text: message };
 
       showStatusMessage("Connecting to RooCode...");
 
@@ -344,8 +344,8 @@ export default function RooPage() {
       {/* Header */}
       <div className="bg-white/95 backdrop-blur-md px-5 py-4 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🤖</span>
-          <h1 className="text-2xl font-normal text-gray-800">
+          <span className="text-xl">🤖</span>
+          <h1 className="text-xl font-normal text-gray-800">
             RooCode Chat{" "}
             <span className="text-sm text-gray-500">
               powered by{" "}
@@ -353,7 +353,7 @@ export default function RooPage() {
                 href="https://github.com/Joouis/agent-maestro"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-lg font-bold italic text-blue-500 hover:text-blue-500 hover:underline"
+                className="text-xl font-bold italic text-blue-500 hover:text-blue-500 hover:underline"
               >
                 Agent Maestro
               </a>

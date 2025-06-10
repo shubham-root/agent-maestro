@@ -371,6 +371,13 @@ export class ProxyServer {
                     },
                     ExtensionType.ROO_CODE,
                   );
+
+                  // Send initial task created event
+                  sendSSE("task_resumed", {
+                    taskId,
+                    status: "resumed",
+                    message: "Task resumed successfully",
+                  });
                 } else {
                   // Create new task
                   logger.info("Creating new RooCode task");
