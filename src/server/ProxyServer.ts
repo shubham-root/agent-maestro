@@ -9,6 +9,7 @@ export interface TaskRequest {
   text: string;
   images?: string[];
   taskId?: string;
+  approveAsk?: boolean; // Optional, used for RooCode tasks
 }
 
 const filteredSayTypes = ["api_req_started"];

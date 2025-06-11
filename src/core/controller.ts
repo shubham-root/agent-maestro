@@ -1,11 +1,11 @@
 // import * as vscode from "vscode";
 import { EventEmitter } from "events";
+import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";
 import { ClineAdapter } from "./ClineAdapter";
 import { RooCodeAdapter } from "./RooCodeAdapter";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
 import { RooCodeMessageOptions, RooCodeTaskOptions } from "./RooCodeAdapter";
-import { options } from "axios";
 
 export interface ExtensionStatus {
   isInstalled: boolean;
@@ -89,15 +89,16 @@ export class ExtensionController extends EventEmitter {
   async startNewTask(
     options: RooCodeTaskOptions,
     extensionType = ExtensionType.ROO_CODE,
-  ): Promise<string | void> {
+  ): Promise<string> {
     logger.info(`Starting new task with ${extensionType}`);
 
     switch (extensionType) {
       case ExtensionType.CLINE:
-        return this.clineAdapter.startNewTask({
+        await this.clineAdapter.startNewTask({
           task: options.text,
           images: options.images,
         });
+        return uuidv4(); // Cline does not return a task ID, so we generate a UUID
       case ExtensionType.ROO_CODE:
         return await this.rooCodeAdapter.startNewTask({
           configuration: options.configuration,

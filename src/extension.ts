@@ -34,12 +34,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand("agent-maestro.startTask", async () => {
       try {
-        const task = await vscode.window.showInputBox({
+        const text = await vscode.window.showInputBox({
           prompt: "Enter task description",
           placeHolder: "What would you like the AI to help you with?",
         });
 
-        if (!task) {
+        if (!text) {
           return;
         }
 
@@ -57,7 +57,7 @@ export async function activate(context: vscode.ExtensionContext) {
             ? ExtensionType.CLINE
             : ExtensionType.ROO_CODE;
         const lastTaskId = await controller.startNewTask(
-          { task },
+          { text },
           extensionType,
         );
 
@@ -161,16 +161,21 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        const message = await vscode.window.showInputBox({
+        const text = await vscode.window.showInputBox({
           prompt: `Enter message to send to ${lastUsedExtension} task`,
           placeHolder: "Type your message here...",
         });
 
-        if (!message) {
+        if (!text) {
           return;
         }
 
-        await controller.sendMessage(message, undefined, lastUsedExtension);
+        await controller.sendMessage(
+          {
+            text,
+          },
+          lastUsedExtension,
+        );
       } catch (error) {
         logger.error("Failed to send message:", error);
         vscode.window.showErrorMessage(
