@@ -57,8 +57,70 @@ export default function RooPage() {
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = async (suggestion: string) => {
     if (isWaitingForResponse) return;
+
+    // Handle Approve/Reject actions for MCP server requests
+    if (suggestion === "Approve" || suggestion === "Reject") {
+      if (!currentTaskId) {
+        console.error("No current task ID for approve/reject action");
+        return;
+      }
+
+      setIsWaitingForResponse(true);
+      showStatusMessage(
+        suggestion === "Approve"
+          ? "Approving request..."
+          : "Rejecting request...",
+      );
+
+      try {
+        const action =
+          suggestion === "Approve"
+            ? "pressPrimaryButton"
+            : "pressSecondaryButton";
+        const response = await fetch(
+          `http://127.0.0.1:23333/api/v1/roo/task/${currentTaskId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action }),
+          },
+        );
+
+        if (response.ok) {
+          showStatusMessage(
+            suggestion === "Approve"
+              ? "Request approved!"
+              : "Request rejected!",
+          );
+
+          // Add a user message to show the action taken
+          const userMessage: Message = {
+            id: uuidv4(),
+            content: suggestion,
+            isUser: true,
+            timestamp: getCurrentTime(),
+          };
+          setMessages((prev) => [...prev, userMessage]);
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Error handling approve/reject:", error);
+        showStatusMessage("Error processing request");
+      } finally {
+        setIsWaitingForResponse(false);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }
+      return;
+    }
+
+    // Handle regular suggestions
     setInputValue(suggestion);
     setTimeout(() => sendMessage(suggestion), 100);
   };

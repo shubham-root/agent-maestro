@@ -9,7 +9,6 @@ export interface TaskRequest {
   text: string;
   images?: string[];
   taskId?: string;
-  approveAsk?: boolean; // Optional, used for RooCode tasks
 }
 
 const filteredSayTypes = ["api_req_started"];
@@ -422,6 +421,102 @@ export class ProxyServer {
                     ? error.message
                     : "Unknown error occurred",
               });
+            }
+          },
+        );
+
+        // POST /api/v1/roo/task/:taskId - Handle task actions
+        fastify.post(
+          "/roo/task/:taskId",
+          {
+            schema: {
+              tags: ["Tasks"],
+              summary: "Perform actions on a RooCode task",
+              description:
+                "Perform specific actions on an existing RooCode task, such as pressing buttons for approvals",
+              params: {
+                type: "object",
+                properties: {
+                  taskId: {
+                    type: "string",
+                    description: "The task ID to perform the action on",
+                  },
+                },
+                required: ["taskId"],
+              },
+              body: {
+                type: "object",
+                properties: {
+                  action: {
+                    type: "string",
+                    enum: ["pressPrimaryButton", "pressSecondaryButton"],
+                    description: "The action to perform on the task",
+                  },
+                },
+                required: ["action"],
+              },
+              response: {
+                200: {
+                  description: "Action performed successfully",
+                },
+                400: {
+                  description: "Bad request - invalid input",
+                },
+                404: {
+                  description: "Task not found",
+                },
+                500: {
+                  description: "Internal server error",
+                },
+              },
+            },
+          },
+          async (request, reply) => {
+            try {
+              const { taskId } = request.params as { taskId: string };
+              const { action } = request.body as { action: string };
+
+              if (
+                !this.controller.isExtensionAvailable(ExtensionType.ROO_CODE)
+              ) {
+                return reply.status(500).send();
+              }
+
+              // Check if task exists in active tasks or history
+              const activeTaskIds = this.controller.getActiveTaskIds();
+              const isTaskInHistory =
+                await this.controller.rooCodeAdapter.isTaskInHistory(taskId);
+
+              if (!activeTaskIds.includes(taskId) && !isTaskInHistory) {
+                return reply.status(404).send();
+              }
+
+              // If task is in history, resume it first
+              if (!activeTaskIds.includes(taskId) && isTaskInHistory) {
+                await this.controller.rooCodeAdapter.resumeTask(taskId);
+              }
+
+              switch (action) {
+                case "pressPrimaryButton":
+                  await this.controller.pressPrimaryButton(
+                    ExtensionType.ROO_CODE,
+                  );
+                  logger.info(`Primary button pressed for task ${taskId}`);
+                  return reply.status(200).send();
+
+                case "pressSecondaryButton":
+                  await this.controller.pressSecondaryButton(
+                    ExtensionType.ROO_CODE,
+                  );
+                  logger.info(`Secondary button pressed for task ${taskId}`);
+                  return reply.status(200).send();
+
+                default:
+                  return reply.status(400).send();
+              }
+            } catch (error) {
+              logger.error("Error handling task action:", error);
+              return reply.status(500).send();
             }
           },
         );
