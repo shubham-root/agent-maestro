@@ -5,7 +5,6 @@ import { ProxyServer } from "./server/ProxyServer";
 
 let controller: ExtensionController;
 let proxy: ProxyServer;
-let lastUsedExtension: ExtensionType | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
   // Debugging usage
@@ -30,49 +29,6 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("agent-maestro.getStatus", () => {
       const status = controller.getExtensionStatus();
       vscode.window.showInformationMessage(JSON.stringify(status, null, 2));
-    }),
-
-    vscode.commands.registerCommand("agent-maestro.startTask", async () => {
-      try {
-        const text = await vscode.window.showInputBox({
-          prompt: "Enter task description",
-          placeHolder: "What would you like the AI to help you with?",
-        });
-
-        if (!text) {
-          return;
-        }
-
-        const extensionTypeString = await vscode.window.showQuickPick(
-          ["Roo Code", "Cline"],
-          { placeHolder: "Select extension to use" },
-        );
-
-        if (!extensionTypeString) {
-          return;
-        }
-
-        const extensionType =
-          extensionTypeString === "Cline"
-            ? ExtensionType.CLINE
-            : ExtensionType.ROO_CODE;
-        const lastTaskId = await controller.startNewTask(
-          { text },
-          extensionType,
-        );
-
-        // Track the last used extension and mark that we have an active task
-        lastUsedExtension = extensionType;
-
-        logger.info(
-          `New task started with ID: ${lastTaskId} using ${extensionType}`,
-        );
-      } catch (error) {
-        logger.error("Failed to start task:", error);
-        vscode.window.showErrorMessage(
-          `Failed to start task: ${(error as Error).message}`,
-        );
-      }
     }),
 
     vscode.commands.registerCommand("agent-maestro.startServer", async () => {
@@ -141,47 +97,6 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage(
         `Server Status: ${status.isRunning ? "Running" : "Stopped"} | Port: ${status.port} | URL: ${status.url}`,
       );
-    }),
-
-    vscode.commands.registerCommand("agent-maestro.sendMessage", async () => {
-      try {
-        // Check if we have a last used extension
-        if (!lastUsedExtension) {
-          vscode.window.showWarningMessage(
-            "No previous extension called by Agent Maestro before. Please start a new task first.",
-          );
-          return;
-        }
-
-        // Check if the last used extension is still available
-        if (!controller.isExtensionAvailable(lastUsedExtension)) {
-          vscode.window.showErrorMessage(
-            `${lastUsedExtension} adapter not available or not active`,
-          );
-          return;
-        }
-
-        const text = await vscode.window.showInputBox({
-          prompt: `Enter message to send to ${lastUsedExtension} task`,
-          placeHolder: "Type your message here...",
-        });
-
-        if (!text) {
-          return;
-        }
-
-        await controller.sendMessage(
-          {
-            text,
-          },
-          lastUsedExtension,
-        );
-      } catch (error) {
-        logger.error("Failed to send message:", error);
-        vscode.window.showErrorMessage(
-          `Failed to send message: ${(error as Error).message}`,
-        );
-      }
     }),
   ];
 

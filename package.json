@@ -54,11 +54,6 @@
         "category": "Agent Maestro"
       },
       {
-        "command": "agent-maestro.startTask",
-        "title": "Start New Task",
-        "category": "Agent Maestro"
-      },
-      {
         "command": "agent-maestro.startServer",
         "title": "Start API Server",
         "category": "Agent Maestro"
@@ -76,11 +71,6 @@
       {
         "command": "agent-maestro.getServerStatus",
         "title": "Get API Server Status",
-        "category": "Agent Maestro"
-      },
-      {
-        "command": "agent-maestro.sendMessage",
-        "title": "Send Message to Active Task",
         "category": "Agent Maestro"
       }
     ]
