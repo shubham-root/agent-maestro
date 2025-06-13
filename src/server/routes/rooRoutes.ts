@@ -2,15 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../utils/logger";
 import { ExtensionController, ExtensionType } from "../../core/controller";
-
-export interface MessageRequest {
-  text: string;
-  images?: string[];
-}
-
-export interface ActionRequest {
-  action: "pressPrimaryButton" | "pressSecondaryButton";
-}
+import { MessageRequest, ActionRequest } from "../types";
 
 const filteredSayTypes = ["api_req_started"];
 
@@ -75,7 +67,7 @@ function createTaskEventHandlers(
       setTimeout(() => {
         // Close the SSE stream
         reply.raw.end();
-      }, 30_000);
+      }, 1_000);
     },
     onTaskAborted: (handlerTaskId: string) => {
       logger.warn(`Task aborted: ${handlerTaskId}`);
@@ -87,7 +79,7 @@ function createTaskEventHandlers(
       setTimeout(() => {
         // Close the SSE stream
         reply.raw.end();
-      }, 30_000);
+      }, 1_000);
     },
     onTaskToolFailed: (handlerTaskId: string, tool: string, error: string) => {
       logger.error(`Tool failed in task ${handlerTaskId}: ${tool} - ${error}`);
@@ -113,21 +105,7 @@ export async function registerRooRoutes(
         summary: "Create a new RooCode task",
         description:
           "Creates and starts a new task using the RooCode extension. Returns Server-Sent Events stream for task progress.",
-        body: {
-          type: "object",
-          required: ["text"],
-          properties: {
-            text: {
-              type: "string",
-              description: "The task query to execute",
-            },
-            images: {
-              type: "array",
-              items: { type: "string" },
-              description: "Optional array of base64-encoded images",
-            },
-          },
-        },
+        body: { $ref: "MessageRequest#" },
         response: {
           200: {
             description: "Server-Sent Events stream for task progress",
@@ -235,21 +213,7 @@ export async function registerRooRoutes(
           },
           required: ["taskId"],
         },
-        body: {
-          type: "object",
-          required: ["text"],
-          properties: {
-            text: {
-              type: "string",
-              description: "The message text to send",
-            },
-            images: {
-              type: "array",
-              items: { type: "string" },
-              description: "Optional array of base64-encoded images",
-            },
-          },
-        },
+        body: { $ref: "MessageRequest#" },
         response: {
           200: {
             description: "Server-Sent Events stream for task progress",

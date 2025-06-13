@@ -1,0 +1,74 @@
+import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "../../utils/logger";
+import { ExtensionController, ExtensionType } from "../../core/controller";
+import { MessageRequest } from "../types";
+
+export async function registerClineRoutes(
+  fastify: FastifyInstance,
+  controller: ExtensionController,
+) {
+  // POST /api/v1/cline/task - Create new Cline task
+  fastify.post(
+    "/cline/task",
+    {
+      schema: {
+        tags: ["Tasks"],
+        summary: "Create a new Cline task",
+        description: "Creates and starts a new task using the Cline extension",
+        body: { $ref: "MessageRequest#" },
+        response: {
+          200: {
+            description: "Task created successfully",
+            $ref: "TaskResponse#",
+          },
+          400: {
+            description: "Bad request - invalid input",
+            ...{ $ref: "ErrorResponse#" },
+          },
+          500: {
+            description: "Internal server error",
+            ...{ $ref: "ErrorResponse#" },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { text, images } = request.body as MessageRequest;
+
+        if (!text || text.trim() === "") {
+          return reply.status(400).send({
+            status: "failed",
+            message: "Task description is required",
+          });
+        }
+
+        if (!controller.isExtensionAvailable(ExtensionType.CLINE)) {
+          return reply.status(500).send({
+            status: "failed",
+            message: "Cline extension is not available",
+          });
+        }
+
+        await controller.startNewTask({ text, images }, ExtensionType.CLINE);
+
+        const response = {
+          id: uuidv4(), // Generate a UUID since Cline doesn't return task ID
+          status: "completed",
+          message: "Currently Cline does not support returning message",
+        };
+
+        logger.info(`Created new Cline task: ${response.id}`);
+        return reply.send(response);
+      } catch (error) {
+        logger.error("Error creating Cline task:", error);
+        return reply.status(500).send({
+          status: "failed",
+          message:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
+      }
+    },
+  );
+}

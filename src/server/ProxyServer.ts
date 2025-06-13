@@ -2,14 +2,9 @@ import Fastify, { FastifyInstance } from "fastify";
 import swagger from "@fastify/swagger";
 import cors from "@fastify/cors";
 import { logger } from "../utils/logger";
-import { ExtensionController, ExtensionType } from "../core/controller";
+import { ExtensionController } from "../core/controller";
 import { registerRooRoutes } from "./routes/rooRoutes";
-
-export interface TaskRequest {
-  text: string;
-  images?: string[];
-  taskId?: string;
-}
+import { registerClineRoutes } from "./routes/clineRoutes";
 
 export class ProxyServer {
   private fastify: FastifyInstance;
@@ -72,7 +67,7 @@ export class ProxyServer {
       prefix: "/api/v1",
     });
     this.fastify.addSchema({
-      $id: "TaskRequest",
+      $id: "MessageRequest",
       type: "object",
       required: ["text"],
       properties: {
@@ -84,11 +79,6 @@ export class ProxyServer {
           type: "array",
           items: { type: "string" },
           description: "Optional array of base64-encoded images",
-        },
-        taskId: {
-          type: "string",
-          description:
-            "Optional task ID. If provided, sends message to existing task. If not provided, creates a new task.",
         },
       },
     });
@@ -125,77 +115,7 @@ export class ProxyServer {
     // Register API routes with prefix
     this.fastify.register(
       async (fastify) => {
-        // POST /api/v1/cline/task - Create new Cline task
-        fastify.post(
-          "/cline/task",
-          {
-            schema: {
-              tags: ["Tasks"],
-              summary: "Create a new Cline task",
-              description:
-                "Creates and starts a new task using the Cline extension",
-              body: { $ref: "TaskRequest#" },
-              response: {
-                200: {
-                  description: "Task created successfully",
-                  $ref: "TaskResponse#",
-                },
-                400: {
-                  description: "Bad request - invalid input",
-                  $ref: "ErrorResponse#",
-                },
-                500: {
-                  description: "Internal server error",
-                  $ref: "ErrorResponse#",
-                },
-              },
-            },
-          },
-          async (request, reply) => {
-            try {
-              const { text, images } = request.body as TaskRequest;
-
-              if (!text || text.trim() === "") {
-                return reply.status(400).send({
-                  status: "failed",
-                  message: "Task description is required",
-                });
-              }
-
-              if (!this.controller.isExtensionAvailable(ExtensionType.CLINE)) {
-                return reply.status(500).send({
-                  status: "failed",
-                  message: "Cline extension is not available",
-                });
-              }
-
-              await this.controller.startNewTask(
-                { text, images },
-                ExtensionType.CLINE,
-              );
-
-              const response = {
-                id: "",
-                status: "completed",
-                message: "Currently Cline does not support returning message",
-              };
-
-              logger.info(`Created new Cline task: ${response.id}`);
-              return reply.send(response);
-            } catch (error) {
-              logger.error("Error creating Cline task:", error);
-              return reply.status(500).send({
-                status: "failed",
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : "Unknown error occurred",
-              });
-            }
-          },
-        );
-
-        // Register RooCode routes
+        await registerClineRoutes(fastify, this.controller);
         await registerRooRoutes(fastify, this.controller);
 
         // GET /api/v1/openapi.json - OpenAPI specification
@@ -215,7 +135,7 @@ export class ProxyServer {
               },
             },
           },
-          async (request, reply) => {
+          async (_request, reply) => {
             const swaggerDoc = fastify.swagger();
             return reply
               .header("Content-Type", "application/json")

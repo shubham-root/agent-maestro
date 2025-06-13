@@ -171,13 +171,6 @@ export class ExtensionController extends EventEmitter {
   }
 
   /**
-   * Remove event handlers for a specific task (delegates to RooCodeAdapter)
-   */
-  removeTaskEventHandlers(taskId: string): void {
-    this.rooCodeAdapter.removeTaskEventHandlers(taskId);
-  }
-
-  /**
    * Get active task IDs that have event handlers (delegates to RooCodeAdapter)
    */
   getActiveTaskIds(): string[] {

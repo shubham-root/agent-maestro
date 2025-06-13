@@ -126,9 +126,9 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
         );
         // Clean up handlers when task is completed
         // Add a timeout to wait for unexpected occasional message events
-        setTimeout(() => {
-          this.activeTaskHandlers.delete(taskId);
-        }, 3_000);
+        // setTimeout(() => {
+        //   this.activeTaskHandlers.delete(taskId);
+        // }, 3_000);
       },
     );
 
@@ -136,7 +136,7 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
       logger.info(`RooCode Task Aborted: ${taskId}`);
       this.forwardEventToTaskHandlers(taskId, "onTaskAborted", taskId);
       // Clean up handlers when task is aborted
-      this.activeTaskHandlers.delete(taskId);
+      // this.activeTaskHandlers.delete(taskId);
     });
 
     this.api.on(RooCodeEventName.TaskPaused, (taskId) => {
@@ -423,14 +423,6 @@ export class RooCodeAdapter extends ExtensionBaseAdapter<RooCodeAPI> {
 
     logger.info(`Creating RooCode profile: ${name}`);
     return await this.api.createProfile(name, profile, activate);
-  }
-
-  /**
-   * Remove event handlers for a specific task
-   */
-  removeTaskEventHandlers(taskId: string): void {
-    this.activeTaskHandlers.delete(taskId);
-    logger.info(`Removed event handlers for task: ${taskId}`);
   }
 
   /**
