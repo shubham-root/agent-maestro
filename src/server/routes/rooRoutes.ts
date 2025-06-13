@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuidv4 } from "uuid";
+import { isEqual } from "lodash";
 import { logger } from "../../utils/logger";
 import { ExtensionController, ExtensionType } from "../../core/controller";
 import { MessageRequest, ActionRequest } from "../types";
@@ -38,11 +39,31 @@ function createTaskEventHandlers(
   sendSSE: (eventType: string, data: any) => void,
   reply: FastifyReply,
 ) {
+  let lastMessage: any = null;
+
   return {
     onMessage: (handlerTaskId: string, message: any) => {
       if (filteredSayTypes.includes(message.say)) {
         return;
       }
+
+      // Check for duplicate messages when partial is false
+      if (
+        message.partial === false &&
+        lastMessage &&
+        lastMessage.partial === false
+      ) {
+        if (isEqual(message, lastMessage)) {
+          // Skip duplicate message
+          return;
+        }
+      }
+
+      // Store current message for next comparison
+      if (message.partial === false) {
+        lastMessage = message;
+      }
+
       sendSSE("message", {
         taskId: handlerTaskId,
         message,

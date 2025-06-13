@@ -34,13 +34,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     autoResizeTextarea(e.target, UI_CONFIG.TEXTAREA_MAX_HEIGHT);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      onSend();
-    }
-  };
-
   const handleSend = () => {
     onSend();
     if (textareaRef.current) {
@@ -48,10 +41,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const canSend = value.trim() && !disabled;
 
   return (
-    <div className="bg-white/95 backdrop-blur-md p-5 border-t border-black/10">
+    <div className="bg-white/95 backdrop-blur-md pl-20 pr-15 py-5 border-t border-black/10">
       <div className="flex gap-3 items-end max-w-4xl mx-auto">
         <textarea
           ref={textareaRef}
@@ -61,7 +61,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           disabled={disabled}
           placeholder={disabled ? "Waiting for response..." : placeholder}
           rows={1}
-          className="flex-1 min-h-12 max-h-30 px-4 py-3 border-2 border-gray-200 rounded-3xl text-base text-black resize-none outline-none transition-colors focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed leading-relaxed scrollbar-hide flex items-center"
+          className="flex-1 min-h-12 max-h-30 p-4 border-2 border-gray-200 rounded-3xl text-black resize-none outline-none transition-colors focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed scrollbar-hide"
         />
         <button
           onClick={handleSend}
