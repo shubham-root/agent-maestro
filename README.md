@@ -1,425 +1,81 @@
 # Agent Maestro
 
-A unified controller for Cline and RooCode extensions that provides both VSCode extension API and local server access for external applications.
+Unlock the full potential of best-in-class AI agents in VS Code via one unified RESTful API. Designed for pros who need fine‑grained programmatic control, enabling seamless agent integration into custom workflows, CI/CD pipelines, and external applications.
 
-## Features
+![Agent Maestro Demo](assets/agent-maestro-demo.gif)
 
-- **Unified API**: Single interface to interact with both Cline and RooCode extensions
-- **Auto-discovery**: Automatically detects and activates installed extensions
-- **Local Server**: HTTP server for external applications to use the controller
-- **Flexible Function Calling**: Universal method to call any extension-specific function
-- **VSCode Integration**: Seamless integration with VSCode commands and UI
+## Key Features
 
-## Installation
+Agent Maestro is a VS Code extension that provides a unified API interface for managing and controlling popular AI coding agents directly within your development environment. Key capabilities include:
 
-1. Install the required dependencies:
+- **Unified API Gateway**: Single RESTful API interface to control multiple AI coding agents through a standardized endpoint
+- **Multi-Agent Support**: Currently supports RooCode and Cline extensions with plans for GitHub Copilot and Kilocode
+- **Real-time Event Streaming**: Server-Sent Events (SSE) support for live task monitoring and message streaming
+- **Task Management**: Comprehensive task lifecycle management including creation, execution, monitoring, and completion tracking
+- **Profile Management**: Advanced configuration management for different AI provider settings and profiles
+- **OpenAPI Documentation**: Auto-generated API documentation accessible via `/api/v1/openapi.json`
+- **Extension Auto-Discovery**: Automatic detection and activation of installed AI coding extensions
 
-   - [Cline](https://marketplace.visualstudio.com/items?itemName=saoudrizwan.claude-dev) (Required)
-   - [RooCode](https://marketplace.visualstudio.com/items?itemName=rooveterinaryinc.roo-cline) (Optional)
+**Note on Cline Support**: While Cline integration is included, its support is currently limited due to the extension's low extensibility and restricted API surface. RooCode offers significantly better integration capabilities and is the recommended primary agent.
 
-2. Install Agent Maestro extension
+## Quick Start
 
-## VSCode Commands
+### Prerequisites
 
-| Command                                | Description                                 |
-| -------------------------------------- | ------------------------------------------- |
-| `Agent Maestro: Start Local Server`    | Start the HTTP server for external access   |
-| `Agent Maestro: Stop Local Server`     | Stop the HTTP server                        |
-| `Agent Maestro: Get Extensions Status` | Show status of Cline and RooCode extensions |
-| `Agent Maestro: Start New Task`        | Start a new task with selected extension    |
+Install RooCode or its variants from the VS Code marketplace to ensure full functionality.
 
-## Core Controller API
+### Installation
 
-### Initialization
+Install the Agent Maestro extension from the [VS Code Marketplace](). Once activated, Agent Maestro automatically starts its API server on startup.
 
-```typescript
-import { ExtensionController } from "./core/controller";
+### Usage
 
-const controller = new ExtensionController();
-await controller.initialize();
-```
+1. **Check API Capabilities**: When the extension starts, you can explore all available API endpoints by accessing the OpenAPI specification at the local server endpoint.
 
-### Unified APIs
+2. **VS Code Commands**: Access Agent Maestro functionality through the Command Palette:
 
-#### Start New Task
+   - `Agent Maestro: Get Extensions Status` - Check the status of supported AI extensions
+   - `Agent Maestro: Start API Server` - Start the proxy API server
+   - `Agent Maestro: Stop API Server` - Stop the proxy API server
+   - `Agent Maestro: Restart API Server` - Restart the proxy API server
+   - `Agent Maestro: Get API Server Status` - Check current server status
 
-```typescript
-// Start with Cline (default)
-await controller.startNewTask({
-  task: "Create a todo app",
-  images: ["data:image/png;base64,..."],
-});
+3. **Development Resources**:
+   - **Examples**: Reference the examples web page for internal testing scenarios _(internal use only)_
+   - **Type Definitions**: Explore the [@roo-code/types](https://www.npmjs.com/package/@roo-code/types) package for detailed event structures and data models
 
-// Start with RooCode
-await controller.startNewTask(
-  {
-    task: "Create a todo app",
-    configuration: { apiProvider: "anthropic" },
-    newTab: true,
-  },
-  "roocode",
-);
-```
+## API Overview
 
-#### Send Message
+Agent Maestro exposes a RESTful API that abstracts the complexity of different AI coding agents into a unified interface.
 
-```typescript
-// Send to Cline (default)
-await controller.sendMessage("Add error handling to the code");
+**Base URL**: `http://localhost:23333/api/v1`
 
-// Send to RooCode
-await controller.sendMessage("Add error handling", [], "roocode");
-```
+**RooCode Agent Routes:**
 
-#### Press Buttons
+- `POST /api/v1/roo/task` - Create new RooCode task with SSE streaming
+- `POST /api/v1/roo/task/{taskId}/message` - Send message to existing task with SSE streaming
+- `POST /api/v1/roo/task/{taskId}/action` - Perform actions (pressPrimaryButton, pressSecondaryButton)
 
-```typescript
-// Press primary button (usually "Continue" or "Approve")
-await controller.pressPrimaryButton("cline");
+**Cline Agent Routes:**
 
-// Press secondary button (usually "Reject" or "Cancel")
-await controller.pressSecondaryButton("roocode");
-```
+- `POST /api/v1/cline/task` - Create new Cline task (basic support)
 
-### Extension-Specific APIs
+**Documentation Routes:**
 
-#### Cline-Specific Functions
+- `GET /api/v1/openapi.json` - Complete OpenAPI v3 specification
 
-```typescript
-// Get/Set custom instructions (Cline only)
-const instructions = await controller.getCustomInstructions();
-await controller.setCustomInstructions("Always use TypeScript");
-```
+## Roadmap
 
-#### Universal Function Calling
+Our development roadmap includes several exciting enhancements:
 
-```typescript
-// Call any RooCode function
-const taskStack = await controller.callExtensionFunction(
-  "roocode",
-  "getCurrentTaskStack",
-);
+- **GitHub Copilot Integration**: Native support for GitHub Copilot and GitHub Copilot Chat
+- **Kilocode Integration**: Integration with Kilocode for expanded AI agent capabilities
+- **File System Access**: Expose file system read capabilities for enhanced agent interactions
+- **VS Code LM API**: Optional direct access to VS Code Language Model API for users preferring lower-level control
+- **Enhanced Extensibility**: Improved plugin architecture for third-party agent integrations
 
-const profiles = await controller.callExtensionFunction(
-  "roocode",
-  "getProfiles",
-);
-
-// Call function with parameters
-await controller.callExtensionFunction("roocode", "createProfile", [
-  "myProfile",
-  { apiProvider: "anthropic" },
-  true,
-]);
-
-// Call any Cline function
-const clineInstructions = await controller.callExtensionFunction(
-  "cline",
-  "getCustomInstructions",
-);
-```
-
-### Status and Utility Methods
-
-```typescript
-// Check if controller is ready
-const isReady = controller.isReady();
-
-// Check if specific extension is available
-const hasCline = controller.isExtensionAvailable("cline");
-const hasRooCode = controller.isExtensionAvailable("roocode");
-
-// Get extension status
-const status = controller.getExtensionStatus();
-console.log(status.cline.isActive); // true/false
-console.log(status.rooCode.version); // version string
-
-// Get available functions for any extension
-const clineFunctions = controller.getExtensionFunctions("cline");
-const rooCodeFunctions = controller.getExtensionFunctions("roocode");
-
-// Get direct API access (if needed)
-const clineApi = controller.getClineApi();
-const rooCodeApi = controller.getRooCodeApi();
-```
-
-## Local Server API
-
-Start the server from VSCode or programmatically:
-
-```typescript
-import { LocalServer } from "./server/local-server";
-
-const server = new LocalServer(controller, {
-  port: 3000,
-  host: "localhost",
-  enableCors: true,
-});
-
-await server.start();
-```
-
-### HTTP Endpoints
-
-#### GET `/status`
-
-Get controller and extensions status.
-
-**Response:**
-
-```json
-{
-  "ready": true,
-  "extensions": {
-    "cline": {
-      "isInstalled": true,
-      "isActive": true,
-      "version": "1.0.0"
-    },
-    "rooCode": {
-      "isInstalled": true,
-      "isActive": true,
-      "version": "2.0.0"
-    }
-  }
-}
-```
-
-#### POST `/start-task`
-
-Start a new task.
-
-**Request:**
-
-```json
-{
-  "extensionType": "cline",
-  "options": {
-    "task": "Create a React component",
-    "images": ["data:image/png;base64,..."],
-    "configuration": {},
-    "newTab": false
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "taskId": "task-123"
-}
-```
-
-#### POST `/send-message`
-
-Send message to current task.
-
-**Request:**
-
-```json
-{
-  "extensionType": "roocode",
-  "message": "Add error handling",
-  "images": []
-}
-```
-
-#### POST `/press-primary`
-
-Press primary button.
-
-**Request:**
-
-```json
-{
-  "extensionType": "cline"
-}
-```
-
-#### POST `/press-secondary`
-
-Press secondary button.
-
-**Request:**
-
-```json
-{
-  "extensionType": "roocode"
-}
-```
-
-#### GET/POST `/custom-instructions`
-
-Get or set custom instructions (Cline only).
-
-**GET Response:**
-
-```json
-{
-  "instructions": "Always use TypeScript"
-}
-```
-
-**POST Request:**
-
-```json
-{
-  "instructions": "Always use TypeScript and add comprehensive error handling"
-}
-```
-
-#### POST `/call-function`
-
-Call any extension function.
-
-**Request:**
-
-```json
-{
-  "extensionType": "roocode",
-  "functionName": "createProfile",
-  "payload": ["myProfile", { "apiProvider": "anthropic" }, true]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "result": "profile-id-123"
-}
-```
-
-#### GET `/functions?extension=cline`
-
-Get available functions for an extension.
-
-**Response:**
-
-```json
-{
-  "functions": [
-    "startNewTask",
-    "sendMessage",
-    "pressPrimaryButton",
-    "pressSecondaryButton",
-    "getCustomInstructions",
-    "setCustomInstructions"
-  ]
-}
-```
-
-## Examples
-
-### External Application Integration
-
-```javascript
-// Using fetch to interact with the local server
-const baseUrl = "http://localhost:3000";
-
-// Check status
-const status = await fetch(`${baseUrl}/status`).then((r) => r.json());
-console.log("Extensions ready:", status.ready);
-
-// Start a task
-const response = await fetch(`${baseUrl}/start-task`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    extensionType: "cline",
-    options: {
-      task: "Create a simple web server in Node.js",
-    },
-  }),
-});
-
-const result = await response.json();
-console.log("Task started:", result.taskId);
-
-// Send follow-up message
-await fetch(`${baseUrl}/send-message`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    extensionType: "cline",
-    message: "Make sure to include error handling",
-  }),
-});
-```
-
-### RooCode Profile Management
-
-```typescript
-// Create a new profile
-await controller.callExtensionFunction("roocode", "createProfile", [
-  "production",
-  {
-    apiProvider: "anthropic",
-    apiKey: "your-key-here",
-    apiModelId: "claude-3-5-sonnet-20241022",
-  },
-  true,
-]);
-
-// Switch to the profile
-await controller.callExtensionFunction(
-  "roocode",
-  "setActiveProfile",
-  "production",
-);
-
-// Get current configuration
-const config = await controller.callExtensionFunction(
-  "roocode",
-  "getConfiguration",
-);
-```
-
-## Error Handling
-
-All methods throw descriptive errors that can be caught and handled:
-
-```typescript
-try {
-  await controller.startNewTask({ task: "test" }, "roocode");
-} catch (error) {
-  if (error.message.includes("RooCode API not available")) {
-    console.log("RooCode extension is not installed or active");
-  }
-}
-```
-
-## Events
-
-The controller emits events for monitoring:
-
-```typescript
-controller.on("initialized", () => {
-  console.log("Controller ready");
-});
-
-controller.on("clineActivated", (api) => {
-  console.log("Cline extension activated");
-});
-
-controller.on("rooCodeActivated", (api) => {
-  console.log("RooCode extension activated");
-});
-```
-
-## TODO
-
-- Support Github Copilot and Kilocode.
-- Expose VS Code LM API
-- Add the detailed contract of the SSE response
-- Use ZOD to add type constrain of controller?
-- Batch tasks automation
-  - [ ] Show batch run command on customized file ext or `.csv` file.
-  - [ ] Show run results.
+**Contributions Welcome**: We encourage community contributions to help expand Agent Maestro's capabilities and support for additional AI coding agents.
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
