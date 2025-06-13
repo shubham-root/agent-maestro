@@ -2,6 +2,8 @@
 
 Unlock the full potential of best-in-class AI agents in VS Code via one unified RESTful API. Designed for pros who need fine‑grained programmatic control, enabling seamless agent integration into custom workflows, CI/CD pipelines, and external applications.
 
+Built entirely by AI agents — yes, they coded themselves.
+
 ![Agent Maestro Demo](assets/agent-maestro-demo.gif)
 
 ## Key Features
@@ -74,7 +76,7 @@ Our development roadmap includes several exciting enhancements:
 - **VS Code LM API**: Optional direct access to VS Code Language Model API for users preferring lower-level control
 - **Enhanced Extensibility**: Improved plugin architecture for third-party agent integrations
 
-**Contributions Welcome**: We encourage community contributions to help expand Agent Maestro's capabilities and support for additional AI coding agents.
+**Contributions Welcome**: We encourage community contributions to help expand Agent Maestro's capabilities and support for additional AI coding agents. We recommend using AI coding agents themselves to accelerate your development workflow when contributing to this project.
 
 ## License
 

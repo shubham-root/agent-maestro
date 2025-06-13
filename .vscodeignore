@@ -1,15 +1,52 @@
+# VSCode configuration and test files
 .vscode/**
 .vscode-test/**
+.vscode-test.mjs
+
+# Build output directories (keep dist/ for compiled extension)
 out/**
+
+# Dependencies
 node_modules/**
+
+# Source files (TypeScript gets compiled to dist/)
 src/**
-.gitignore
+
+# Package manager files
+.npmrc
 .yarnrc
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Git files
+.gitignore
+.gitattributes
+
+# Build and development configuration
 esbuild.js
-vsc-extension-quickstart.md
 **/tsconfig.json
 **/eslint.config.mjs
+eslint.config.mjs
+
+# Prettier configuration
+.prettierrc
+.prettierignore
+
+# Source maps and TypeScript files
 **/*.map
 **/*.ts
+
+# Test files
 **/.vscode-test.*
+
+# Examples and demos
 examples/**
+
+# Built extension package (avoid including the .vsix in itself)
+*.vsix
+
+# Husky git hooks
+.husky/**
+
+assets/**/*.gif
+assets/**/*.svg
