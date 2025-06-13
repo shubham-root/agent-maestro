@@ -4,7 +4,7 @@ Unlock the full potential of best-in-class AI agents in VS Code via one unified 
 
 Built entirely by AI agents — yes, they coded themselves.
 
-![Agent Maestro Demo](assets/agent-maestro-demo.gif)
+![Agent Maestro Demo](https://media.githubusercontent.com/media/Joouis/agent-maestro/main/assets/agent-maestro-demo.gif)
 
 ## Key Features
 

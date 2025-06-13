@@ -3,11 +3,9 @@
   "displayName": "Agent Maestro",
   "description": "Empower seasoned professionals, break through creative boundaries, and leverage VS Code's best-in-class AI coding agents.",
   "version": "0.1.0",
+  "icon": "assets/icons/icon.jpg",
   "publisher": "Joouis",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Joouis/agent-maestro"
-  },
+  "repository": "https://github.com/Joouis/agent-maestro",
   "engines": {
     "vscode": "^1.100.0"
   },
@@ -77,7 +75,8 @@
     ]
   },
   "scripts": {
-    "vscode:package": "pnpm run package && vsce package --no-dependencies",
+    "vscode:prepublish": "pnpm run package",
+    "vscode:package": "vsce package --no-dependencies",
     "vscode:publish": "vsce publish --no-dependencies",
     "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",

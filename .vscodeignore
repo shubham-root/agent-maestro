@@ -48,5 +48,9 @@ examples/**
 # Husky git hooks
 .husky/**
 
+# Documentation files
 assets/**/*.gif
 assets/**/*.svg
+
+# Github configs
+.github/**
