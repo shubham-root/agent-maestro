@@ -80,7 +80,7 @@ export default function RooPage() {
             ? "pressPrimaryButton"
             : "pressSecondaryButton";
         const response = await fetch(
-          `http://127.0.0.1:23333/api/v1/roo/task/${currentTaskId}`,
+          `http://127.0.0.1:23333/api/v1/roo/task/${currentTaskId}/action`,
           {
             method: "POST",
             headers: {
@@ -148,10 +148,12 @@ export default function RooPage() {
     setShowTyping(true);
 
     try {
-      const url = `http://127.0.0.1:23333/api/v1/roo/task`;
-      const body = currentTaskId
-        ? { taskId: currentTaskId, text: message }
-        : { text: message };
+      // Use different endpoints based on whether we have a current task
+      const url = currentTaskId
+        ? `http://127.0.0.1:23333/api/v1/roo/task/${currentTaskId}/message`
+        : `http://127.0.0.1:23333/api/v1/roo/task`;
+
+      const body = { text: message };
 
       showStatusMessage("Connecting to RooCode...");
 
@@ -197,6 +199,8 @@ export default function RooPage() {
               if (currentEvent === "task_created" && data.taskId) {
                 setCurrentTaskId(data.taskId);
                 showStatusMessage("Task created, streaming response...");
+              } else if (currentEvent === "task_resumed" && data.taskId) {
+                showStatusMessage("Task resumed, streaming response...");
               } else if (
                 currentEvent === "message" &&
                 data.message &&
@@ -322,63 +326,94 @@ export default function RooPage() {
                   data.message.ask === "use_mcp_server" &&
                   data.message.text
                 ) {
-                  // Handle use_mcp_server ask type
-                  let finalContent = "";
-                  let suggestions: string[] = ["Approve", "Reject"];
+                  if (data.message.partial) {
+                    // When partial is true, create or update the message with basic content
+                    if (!currentAgentMessageId) {
+                      const newAgentMessageId = uuidv4();
+                      currentAgentMessageId = newAgentMessageId;
 
-                  try {
-                    const mcpData = JSON.parse(data.message.text);
-                    const serverName = mcpData.serverName || "Unknown Server";
-                    const toolName = mcpData.toolName || "Unknown Tool";
+                      const newAgentMessage: Message = {
+                        id: newAgentMessageId,
+                        content:
+                          "🔧 MCP Server Tool Request\n\nProcessing request...",
+                        isUser: false,
+                        timestamp: getCurrentTime(),
+                      };
 
-                    let argumentsText = "";
-                    if (mcpData.arguments) {
-                      try {
-                        const args =
-                          typeof mcpData.arguments === "string"
-                            ? JSON.parse(mcpData.arguments)
-                            : mcpData.arguments;
-                        argumentsText = JSON.stringify(args, null, 2);
-                      } catch (e) {
-                        argumentsText = mcpData.arguments.toString();
+                      setMessages((prev) => [...prev, newAgentMessage]);
+                    } else {
+                      // Update existing message content
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === currentAgentMessageId
+                            ? {
+                                ...msg,
+                                content:
+                                  "🔧 MCP Server Tool Request\n\nProcessing request...",
+                              }
+                            : msg,
+                        ),
+                      );
+                    }
+                  } else {
+                    // When partial is false, handle the complete MCP server request
+                    let finalContent = "";
+                    let suggestions: string[] = ["Approve", "Reject"];
+
+                    try {
+                      const mcpData = JSON.parse(data.message.text);
+                      const serverName = mcpData.serverName || "Unknown Server";
+                      const toolName = mcpData.toolName || "Unknown Tool";
+
+                      let argumentsText = "";
+                      if (mcpData.arguments) {
+                        try {
+                          const args =
+                            typeof mcpData.arguments === "string"
+                              ? JSON.parse(mcpData.arguments)
+                              : mcpData.arguments;
+                          argumentsText = JSON.stringify(args, null, 2);
+                        } catch (e) {
+                          argumentsText = mcpData.arguments.toString();
+                        }
                       }
+
+                      finalContent = `🔧 MCP Server Tool Request\n\nServer: ${serverName}\nTool: ${toolName}\nArguments:\n${argumentsText}\n\nDo you want to approve this MCP tool usage?`;
+                    } catch (e) {
+                      console.error("Failed to parse MCP server data:", e);
+                      finalContent =
+                        "🔧 MCP Server Tool Request\n\nDo you want to approve this MCP tool usage?";
                     }
 
-                    finalContent = `🔧 MCP Server Tool Request\n\nServer: ${serverName}\nTool: ${toolName}\nArguments:\n${argumentsText}\n\nDo you want to approve this MCP tool usage?`;
-                  } catch (e) {
-                    console.error("Failed to parse MCP server data:", e);
-                    finalContent =
-                      "🔧 MCP Server Tool Request\n\nDo you want to approve this MCP tool usage?";
-                  }
+                    if (currentAgentMessageId) {
+                      // Update the existing message with final content and suggestions
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          msg.id === currentAgentMessageId
+                            ? { ...msg, content: finalContent, suggestions }
+                            : msg,
+                        ),
+                      );
+                    } else {
+                      // Create new message if somehow we don't have an existing one
+                      const newAgentMessageId = uuidv4();
+                      const newAgentMessage: Message = {
+                        id: newAgentMessageId,
+                        content: finalContent,
+                        isUser: false,
+                        timestamp: getCurrentTime(),
+                        suggestions,
+                      };
+                      setMessages((prev) => [...prev, newAgentMessage]);
+                    }
 
-                  if (currentAgentMessageId) {
-                    // Update the existing message with final content and suggestions
-                    setMessages((prev) =>
-                      prev.map((msg) =>
-                        msg.id === currentAgentMessageId
-                          ? { ...msg, content: finalContent, suggestions }
-                          : msg,
-                      ),
-                    );
-                  } else {
-                    // Create new message
-                    const newAgentMessageId = uuidv4();
-                    const newAgentMessage: Message = {
-                      id: newAgentMessageId,
-                      content: finalContent,
-                      isUser: false,
-                      timestamp: getCurrentTime(),
-                      suggestions,
-                    };
-                    setMessages((prev) => [...prev, newAgentMessage]);
-                  }
-
-                  setTimeout(() => {
-                    currentAgentMessageId = null;
-                  }, 1);
-                  setIsWaitingForResponse(false);
-                  if (textareaRef.current) {
-                    textareaRef.current.focus();
+                    setTimeout(() => {
+                      currentAgentMessageId = null;
+                    }, 1);
+                    setIsWaitingForResponse(false);
+                    if (textareaRef.current) {
+                      textareaRef.current.focus();
+                    }
                   }
                 }
               } else if (currentEvent === "task_completed") {
