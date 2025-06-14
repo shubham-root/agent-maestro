@@ -1,6 +1,6 @@
+import { isEqual } from "es-toolkit";
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuidv4 } from "uuid";
-import { isEqual } from "lodash";
 import { logger } from "../../utils/logger";
 import { ExtensionController, ExtensionType } from "../../core/controller";
 import { MessageRequest, ActionRequest } from "../types";
