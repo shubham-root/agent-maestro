@@ -1,4 +1,6 @@
 const esbuild = require("esbuild");
+const fs = require("fs");
+const path = require("path");
 
 const production = process.argv.includes("--production");
 const watch = process.argv.includes("--watch");
@@ -35,8 +37,9 @@ async function main() {
     sourcesContent: false,
     platform: "node",
     outfile: "dist/extension.js",
+    metafile: production,
     external: ["vscode"],
-    logLevel: "silent",
+    logLevel: "debug",
     plugins: [
       /* add to the end of plugins array */
       esbuildProblemMatcherPlugin,
@@ -45,7 +48,15 @@ async function main() {
   if (watch) {
     await ctx.watch();
   } else {
-    await ctx.rebuild();
+    await ctx.rebuild().then((result) => {
+      if (result.metafile) {
+        fs.writeFileSync(
+          path.join("dist", "meta.json"),
+          JSON.stringify(result.metafile, null, 2),
+        );
+      }
+      console.log("[build] build completed");
+    });
     await ctx.dispose();
   }
 }

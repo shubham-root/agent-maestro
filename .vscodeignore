@@ -35,6 +35,7 @@ eslint.config.mjs
 # Source maps and TypeScript files
 **/*.map
 **/*.ts
+dist/meta.json
 
 # Test files
 **/.vscode-test.*

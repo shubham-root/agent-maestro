@@ -1,4 +1,3 @@
-// import * as vscode from "vscode";
 import { EventEmitter } from "events";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../utils/logger";

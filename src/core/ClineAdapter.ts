@@ -1,9 +1,9 @@
 // import * as fs from "fs";
 // import * as os from "os";
 // import * as path from "path";
-import * as vscode from "vscode";
+// import * as vscode from "vscode";
 
-import axios from "axios";
+// import axios from "axios";
 import { logger } from "../utils/logger";
 import { ClineAPI } from "../types/cline";
 import { ExtensionBaseAdapter } from "./ExtensionBaseAdapter";
