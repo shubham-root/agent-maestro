@@ -4,6 +4,8 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+packageExtensionsChecksum: sha256-qSyFxyapyaIStFoepqorlrhhVRH7eDCPkQIzouFSl6c=
+
 importers:
   .:
     dependencies:
@@ -28,7 +30,7 @@ importers:
     devDependencies:
       "@roo-code/types":
         specifier: ^1.26.0
-        version: 1.26.0
+        version: 1.26.0(zod@3.25.64)
       "@types/mocha":
         specifier: ^10.0.10
         version: 10.0.10
@@ -77,9 +79,6 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
-      zod:
-        specifier: ^3.25.56
-        version: 3.25.56
 
 packages:
   "@azu/format-text@1.0.2":
@@ -630,6 +629,8 @@ packages:
       {
         integrity: sha512-FX+9jl+PRpZG0n+MUFXjlelDdzEVLQULfHAdBCT7npOs0MrC5IaBGxtuZMYRKWYzEvgwRM96oqXgr6CYkNIWZQ==,
       }
+    peerDependencies:
+      zod: ^3.25.61
 
   "@secretlint/config-creator@9.3.4":
     resolution:
@@ -4767,10 +4768,10 @@ packages:
       }
     engines: { node: ">=10" }
 
-  zod@3.25.56:
+  zod@3.25.64:
     resolution:
       {
-        integrity: sha512-rd6eEF3BTNvQnR2e2wwolfTmUTnp70aUTqr0oaGbHifzC3BKJsoV+Gat8vxUMR1hwOKBs6El+qWehrHbCpW6SQ==,
+        integrity: sha512-hbP9FpSZf7pkS7hRVUrOjhwKJNyampPgtXKc3AN6DsWtoHsg2Sb4SQaS4Tcay380zSwd2VPo9G9180emBACp5g==,
       }
 
 snapshots:
@@ -5078,7 +5079,9 @@ snapshots:
   "@pkgjs/parseargs@0.11.0":
     optional: true
 
-  "@roo-code/types@1.26.0": {}
+  "@roo-code/types@1.26.0(zod@3.25.64)":
+    dependencies:
+      zod: 3.25.64
 
   "@secretlint/config-creator@9.3.4":
     dependencies:
@@ -7800,4 +7803,4 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod@3.25.56: {}
+  zod@3.25.64: {}
