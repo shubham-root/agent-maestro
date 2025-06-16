@@ -1,7 +1,7 @@
 {
   "name": "agent-maestro",
   "displayName": "Agent Maestro",
-  "description": "Empower seasoned professionals, break through creative boundaries, and leverage VS Code's best-in-class AI coding agents.",
+  "description": "Headless VS Code AI: bring best-in-class AI agents into any workflow — assist, automate tasks, and generate solutions everywhere.",
   "version": "0.2.1",
   "icon": "assets/icons/icon.jpg",
   "publisher": "Joouis",
