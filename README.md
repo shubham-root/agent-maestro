@@ -10,7 +10,7 @@ Built entirely by AI agents — yes, they coded themselves.
 
 AI Agents mark a transformative shift—from simple LLM calls to autonomous collaborators: employees, partners, or entire dev teams at your command. While open‑source agent frameworks offer flexible, powerful building blocks, customizing and fine‑tuning them still requires time and effort.
 
-VS Code extensions like GitHub Copilot Chat, Cline, and Roo Code have collectively surpassed tens of millions of downloads, offering battle‑tested, out‑of‑the‑box agent experiences. Agent Maestro taps into this maturity as the first headless bridge to VS Code’s best‑in‑class AI agents: no custom framework setup, no GUI dependencies. Leverage VS Code’s unified APIs and rich model catalog (including free tiers) to assist tasks, automate workflows, and generate solutions across any environment—from CI pipelines and scripts to your terminal—effortlessly.
+VS Code extensions like GitHub Copilot Chat, Cline, and Roo Code have collectively surpassed tens of millions of downloads, offering battle‑tested, out‑of‑the‑box agent experiences. Agent Maestro taps into this maturity as among the first headless bridges to VS Code’s best‑in‑class AI agents: no custom framework setup, no GUI dependencies. Leverage VS Code’s unified APIs and rich model catalog (including free tiers) to assist tasks, automate workflows, and generate solutions across any environment—from CI pipelines and scripts to your terminal—effortlessly.
 
 ## Key Features
 

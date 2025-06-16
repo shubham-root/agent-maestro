@@ -176,7 +176,7 @@ export async function registerRooRoutes(
     },
     async (request, reply) => {
       try {
-        const { text, images } = request.body as MessageRequest;
+        const { text, images, configuration } = request.body as MessageRequest;
 
         if (!text || text.trim() === "") {
           return reply.status(400).send({
@@ -204,6 +204,7 @@ export async function registerRooRoutes(
             {
               text,
               images,
+              configuration,
               eventHandlers,
             },
             ExtensionType.ROO_CODE,

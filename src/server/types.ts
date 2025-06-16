@@ -1,6 +1,9 @@
+import { RooCodeSettings } from "@roo-code/types";
+
 export interface MessageRequest {
   text: string;
   images?: string[];
+  configuration?: RooCodeSettings;
 }
 
 export interface ActionRequest {
