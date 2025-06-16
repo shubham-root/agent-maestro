@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { Message } from "../types/chat";
+import { DEFAULT_MODE } from "../utils/constants";
 
 export const useChatState = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -7,6 +8,7 @@ export const useChatState = () => {
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [showTyping, setShowTyping] = useState(false);
+  const [selectedMode, setSelectedMode] = useState(DEFAULT_MODE);
 
   const addMessage = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message]);
@@ -33,6 +35,7 @@ export const useChatState = () => {
     setIsWaitingForResponse(false);
     setInputValue("");
     setShowTyping(false);
+    setSelectedMode(DEFAULT_MODE);
   }, []);
 
   const setWaitingState = useCallback((waiting: boolean) => {
@@ -47,12 +50,14 @@ export const useChatState = () => {
     isWaitingForResponse,
     currentTaskId,
     showTyping,
+    selectedMode,
 
     // Setters
     setInputValue,
     setIsWaitingForResponse,
     setCurrentTaskId,
     setShowTyping,
+    setSelectedMode,
 
     // Actions
     addMessage,

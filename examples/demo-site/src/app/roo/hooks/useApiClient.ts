@@ -33,12 +33,16 @@ export const useApiClient = () => {
   );
 
   const sendMessage = useCallback(
-    async (message: string, taskId?: string): Promise<Response> => {
+    async (
+      message: string,
+      mode: string,
+      taskId?: string,
+    ): Promise<Response> => {
       const url = taskId
         ? API_ENDPOINTS.TASK_MESSAGE(taskId)
         : API_ENDPOINTS.TASK;
 
-      const body = { text: message };
+      const body = { text: message, configuration: { mode } };
 
       const response = await fetch(url, {
         method: "POST",

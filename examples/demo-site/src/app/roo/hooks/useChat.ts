@@ -111,6 +111,7 @@ export const useChat = () => {
 
         const response = await apiClient.sendMessage(
           message,
+          chatState.selectedMode,
           chatState.currentTaskId || undefined,
         );
 
@@ -155,6 +156,7 @@ export const useChat = () => {
     showTyping: chatState.showTyping,
     statusMessage: statusManager.statusMessage,
     showStatus: statusManager.showStatus,
+    selectedMode: chatState.selectedMode,
 
     // Refs
     textareaRef,
@@ -164,5 +166,6 @@ export const useChat = () => {
     handleSuggestionClick,
     sendMessage,
     setInputValue: chatState.setInputValue,
+    setSelectedMode: chatState.setSelectedMode,
   };
 };

@@ -56,3 +56,48 @@ export const UI_CONFIG = {
   TEXTAREA_MAX_HEIGHT: 120,
   MESSAGE_UPDATE_DELAY: 1,
 } as const;
+
+export const MODES = [
+  {
+    slug: "code",
+    name: "💻 Code",
+    whenToUse:
+      "Use this mode when you need to write, modify, or refactor code. Ideal for implementing features, fixing bugs, creating new files, or making code improvements across any programming language or framework.",
+    groups: ["read", "edit", "browser", "command", "mcp"],
+  },
+  {
+    slug: "architect",
+    name: "🏗️ Architect",
+    whenToUse:
+      "Use this mode when you need to plan, design, or strategize before implementation. Perfect for breaking down complex problems, creating technical specifications, designing system architecture, or brainstorming solutions before coding.",
+    groups: [
+      "read",
+      ["edit", { fileRegex: "\\.md$", description: "Markdown files only" }],
+      "browser",
+      "mcp",
+    ],
+  },
+  {
+    slug: "ask",
+    name: "❓ Ask",
+    whenToUse:
+      "Use this mode when you need explanations, documentation, or answers to technical questions. Best for understanding concepts, analyzing existing code, getting recommendations, or learning about technologies without making changes.",
+    groups: ["read", "browser", "mcp"],
+  },
+  {
+    slug: "debug",
+    name: "🪲 Debug",
+    whenToUse:
+      "Use this mode when you're troubleshooting issues, investigating errors, or diagnosing problems. Specialized in systematic debugging, adding logging, analyzing stack traces, and identifying root causes before applying fixes.",
+    groups: ["read", "edit", "browser", "command", "mcp"],
+  },
+  {
+    slug: "orchestrator",
+    name: "🪃 Orchestrator",
+    whenToUse:
+      "Use this mode for complex, multi-step projects that require coordination across different specialties. Ideal when you need to break down large tasks into subtasks, manage workflows, or coordinate work that spans multiple domains or expertise areas.",
+    groups: [],
+  },
+] as const;
+
+export const DEFAULT_MODE = "ask";

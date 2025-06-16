@@ -16,6 +16,7 @@ export default function RooPage() {
     showTyping,
     statusMessage,
     showStatus,
+    selectedMode,
 
     // Refs
     textareaRef,
@@ -25,6 +26,7 @@ export default function RooPage() {
     handleSuggestionClick,
     sendMessage,
     setInputValue,
+    setSelectedMode,
   } = useChat();
 
   return (
@@ -42,6 +44,9 @@ export default function RooPage() {
         onChange={setInputValue}
         onSend={sendMessage}
         disabled={isWaitingForResponse}
+        selectedMode={selectedMode}
+        onModeChange={setSelectedMode}
+        hasMessages={messages.length > 0}
       />
 
       <StatusIndicator show={showStatus} message={statusMessage} />
