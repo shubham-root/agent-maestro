@@ -52,6 +52,7 @@ examples/**
 # Documentation files
 assets/**/*.gif
 assets/**/*.svg
+assets/**/*.png
 
 # Github configs
 .github/**

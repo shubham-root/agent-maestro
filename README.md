@@ -52,6 +52,14 @@ Install the Agent Maestro extension from the VS Code Marketplace. Once activated
    - **Type Definitions**: Explore the [@roo-code/types](https://www.npmjs.com/package/@roo-code/types) package for detailed event structures and data models
    - **Examples**: The `examples/demo-site` directory is intended for internal testing purposes only. You may reference its implementation of Roo Code event handling as an example, but note that this sub-project is not officially supported.
 
+## How it Works
+
+The following diagram illustrates the basic workflow for task creation and conversation in Agent Maestro:
+
+![Workflow Diagram](assets/demo-workflow.png)
+
+This workflow shows how tasks are created, how messages flow between the client and AI agents, and how the system handles real-time communication through Server-Sent Events (SSE).
+
 ## API Overview
 
 Agent Maestro exposes a RESTful API that abstracts the complexity of different AI coding agents into a unified interface.

@@ -6,6 +6,14 @@ The RooRoutes API provides real-time communication through Server-Sent Events (S
 
 SSE streams are established when creating new tasks or sending messages to existing tasks, providing a persistent connection for receiving updates until the task completes or the stream is explicitly closed.
 
+## Visual Workflow Overview
+
+![Workflow Diagram](../assets/demo-workflow.png)
+
+The workflow diagram above illustrates the high-level task creation and conversation flow that generates the SSE events documented below. This visual representation shows how user interactions trigger task creation, message exchanges, and the overall lifecycle that produces the various event types. The diagram complements the detailed SSE event documentation by providing context for when and why each event occurs during the task execution process.
+
+The workflow demonstrates the relationship between user actions (creating tasks, sending messages) and the corresponding SSE events that flow back to the client, showing how the events fit into the broader task management and communication system.
+
 ## Event Overview
 
 The RooRoutes API emits 8 distinct event types that cover the complete lifecycle of task execution:
@@ -92,7 +100,7 @@ The RooRoutes API emits 8 distinct event types that cover the complete lifecycle
 
 - Displaying real-time agent responses
 - Implementing typewriter-style text streaming
-- Handling followup questions with suggested responses
+- Handling follow-up questions with suggested responses
 - Managing MCP server tool requests
 
 ---
