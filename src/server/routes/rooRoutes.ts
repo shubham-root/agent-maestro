@@ -8,6 +8,11 @@ import { MessageRequest, ActionRequest } from "../types";
 const filteredSayTypes = ["api_req_started"];
 const CLOSE_SSE_STREAM_DELAY_MS = 1_000;
 
+// Helper function to check if message is complete (handles undefined partial)
+function isMessageCompleted(message: any): boolean {
+  return !message.partial;
+}
+
 // Helper function to set up SSE headers and return sendSSE function
 function setupSSEResponse(reply: FastifyReply, request: FastifyRequest) {
   // Set up SSE headers
@@ -32,13 +37,22 @@ function setupSSEResponse(reply: FastifyReply, request: FastifyRequest) {
     logger.error("SSE stream error:", err);
   });
 
-  return { sendSSE };
+  // Helper function to close SSE stream with event notification
+  const closeSSEStream = (message: string) => {
+    sendSSE("stream_closed", { message });
+
+    setTimeout(() => {
+      reply.raw.end();
+    }, CLOSE_SSE_STREAM_DELAY_MS);
+  };
+
+  return { sendSSE, closeSSEStream };
 }
 
 // Helper function to create event handlers for task streaming
 function createTaskEventHandlers(
   sendSSE: (eventType: string, data: any) => void,
-  reply: FastifyReply,
+  closeSSEStream: (message: string) => void,
 ) {
   let lastMessage: any = null;
 
@@ -50,9 +64,9 @@ function createTaskEventHandlers(
 
       // Check for duplicate messages when partial is false
       if (
-        message.partial === false &&
+        isMessageCompleted(message) &&
         lastMessage &&
-        lastMessage.partial === false
+        isMessageCompleted(lastMessage)
       ) {
         if (isEqual(message, lastMessage)) {
           // Skip duplicate message
@@ -61,7 +75,7 @@ function createTaskEventHandlers(
       }
 
       // Store current message for next comparison
-      if (message.partial === false) {
+      if (isMessageCompleted(message)) {
         lastMessage = message;
       }
 
@@ -69,6 +83,11 @@ function createTaskEventHandlers(
         taskId: handlerTaskId,
         message,
       });
+
+      // Close SSE stream when followup question is asked
+      if (isMessageCompleted(message) && message.ask === "followup") {
+        closeSSEStream("followup_question");
+      }
     },
     onTaskCompleted: (
       handlerTaskId: string,
@@ -85,11 +104,7 @@ function createTaskEventHandlers(
         toolUsage,
       });
 
-      // Wait a bit since there still might be some messages coming in
-      setTimeout(() => {
-        // Close the SSE stream
-        reply.raw.end();
-      }, CLOSE_SSE_STREAM_DELAY_MS);
+      closeSSEStream("task_completed");
     },
     onTaskAborted: (handlerTaskId: string) => {
       logger.warn(`Task aborted: ${handlerTaskId}`);
@@ -97,11 +112,7 @@ function createTaskEventHandlers(
         taskId: handlerTaskId,
       });
 
-      // Wait a bit since there still might be some messages coming in
-      setTimeout(() => {
-        // Close the SSE stream
-        reply.raw.end();
-      }, CLOSE_SSE_STREAM_DELAY_MS);
+      closeSSEStream("task_aborted");
     },
     onTaskToolFailed: (handlerTaskId: string, tool: string, error: string) => {
       logger.error(`Tool failed in task ${handlerTaskId}: ${tool} - ${error}`);
@@ -171,8 +182,8 @@ export async function registerRooRoutes(
         }
 
         // Use shared SSE setup
-        const { sendSSE } = setupSSEResponse(reply, request);
-        const eventHandlers = createTaskEventHandlers(sendSSE, reply);
+        const { sendSSE, closeSSEStream } = setupSSEResponse(reply, request);
+        const eventHandlers = createTaskEventHandlers(sendSSE, closeSSEStream);
 
         try {
           // Create new task logic
@@ -296,8 +307,8 @@ export async function registerRooRoutes(
         }
 
         // Use shared SSE setup
-        const { sendSSE } = setupSSEResponse(reply, request);
-        const eventHandlers = createTaskEventHandlers(sendSSE, reply);
+        const { sendSSE, closeSSEStream } = setupSSEResponse(reply, request);
+        const eventHandlers = createTaskEventHandlers(sendSSE, closeSSEStream);
 
         try {
           // Send message to existing task logic
