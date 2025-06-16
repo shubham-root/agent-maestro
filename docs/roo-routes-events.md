@@ -8,7 +8,7 @@ SSE streams are established when creating new tasks or sending messages to exist
 
 ## Visual Workflow Overview
 
-![Workflow Diagram](../assets/demo-workflow.png)
+![Workflow Diagram](https://media.githubusercontent.com/media/Joouis/agent-maestro/main/assets/demo-workflow.png)
 
 The workflow diagram above illustrates the high-level task creation and conversation flow that generates the SSE events documented below. This visual representation shows how user interactions trigger task creation, message exchanges, and the overall lifecycle that produces the various event types. The diagram complements the detailed SSE event documentation by providing context for when and why each event occurs during the task execution process.
 

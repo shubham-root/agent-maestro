@@ -56,7 +56,7 @@ Install the Agent Maestro extension from the VS Code Marketplace. Once activated
 
 The following diagram illustrates the basic workflow for task creation and conversation in Agent Maestro:
 
-![Workflow Diagram](assets/demo-workflow.png)
+![Workflow Diagram](https://media.githubusercontent.com/media/Joouis/agent-maestro/main/assets/demo-workflow.png)
 
 This workflow shows how tasks are created, how messages flow between the client and AI agents, and how the system handles real-time communication through Server-Sent Events (SSE).
 
