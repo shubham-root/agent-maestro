@@ -5,6 +5,17 @@ import { logger } from "../../utils/logger";
 import { ExtensionController, ExtensionType } from "../../core/controller";
 import { MessageRequest, ActionRequest } from "../types";
 
+export enum SSEEventType {
+  STREAM_CLOSED = "stream_closed",
+  MESSAGE = "message",
+  TASK_COMPLETED = "task_completed",
+  TASK_ABORTED = "task_aborted",
+  TOOL_FAILED = "tool_failed",
+  TASK_CREATED = "task_created",
+  ERROR = "error",
+  TASK_RESUMED = "task_resumed",
+}
+
 const filteredSayTypes = ["api_req_started"];
 const CLOSE_SSE_STREAM_DELAY_MS = 1_000;
 
@@ -39,7 +50,7 @@ function setupSSEResponse(reply: FastifyReply, request: FastifyRequest) {
 
   // Helper function to close SSE stream with event notification
   const closeSSEStream = (message: string) => {
-    sendSSE("stream_closed", { message });
+    sendSSE(SSEEventType.STREAM_CLOSED, { message });
 
     setTimeout(() => {
       reply.raw.end();
@@ -79,7 +90,7 @@ function createTaskEventHandlers(
         lastMessage = message;
       }
 
-      sendSSE("message", {
+      sendSSE(SSEEventType.MESSAGE, {
         taskId: handlerTaskId,
         message,
       });
@@ -98,7 +109,7 @@ function createTaskEventHandlers(
         tokenUsage,
         toolUsage,
       });
-      sendSSE("task_completed", {
+      sendSSE(SSEEventType.TASK_COMPLETED, {
         taskId: handlerTaskId,
         tokenUsage,
         toolUsage,
@@ -108,7 +119,7 @@ function createTaskEventHandlers(
     },
     onTaskAborted: (handlerTaskId: string) => {
       logger.warn(`Task aborted: ${handlerTaskId}`);
-      sendSSE("task_aborted", {
+      sendSSE(SSEEventType.TASK_ABORTED, {
         taskId: handlerTaskId,
       });
 
@@ -116,7 +127,7 @@ function createTaskEventHandlers(
     },
     onTaskToolFailed: (handlerTaskId: string, tool: string, error: string) => {
       logger.error(`Tool failed in task ${handlerTaskId}: ${tool} - ${error}`);
-      sendSSE("tool_failed", {
+      sendSSE(SSEEventType.TOOL_FAILED, {
         taskId: handlerTaskId,
         tool,
         error,
@@ -199,7 +210,7 @@ export async function registerRooRoutes(
           );
 
           // Send initial task created event
-          sendSSE("task_created", {
+          sendSSE(SSEEventType.TASK_CREATED, {
             taskId: newTaskId || uuidv4(),
             status: "created",
             message: "Task created successfully",
@@ -208,7 +219,7 @@ export async function registerRooRoutes(
           logger.info(`Created new RooCode task with SSE: ${newTaskId}`);
         } catch (taskError) {
           logger.error("Error processing RooCode task:", taskError);
-          sendSSE("error", {
+          sendSSE(SSEEventType.ERROR, {
             error:
               taskError instanceof Error
                 ? taskError.message
@@ -331,14 +342,14 @@ export async function registerRooRoutes(
           );
 
           // Send initial task resumed event
-          sendSSE("task_resumed", {
+          sendSSE(SSEEventType.TASK_RESUMED, {
             taskId,
             status: "resumed",
             message: "Task resumed successfully",
           });
         } catch (taskError) {
           logger.error("Error processing RooCode task message:", taskError);
-          sendSSE("error", {
+          sendSSE(SSEEventType.ERROR, {
             error:
               taskError instanceof Error
                 ? taskError.message

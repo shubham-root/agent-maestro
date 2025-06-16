@@ -58,6 +58,10 @@ Agent Maestro exposes a RESTful API that abstracts the complexity of different A
 - `POST /api/v1/roo/task/{taskId}/message` - Send message to existing task with SSE streaming
 - `POST /api/v1/roo/task/{taskId}/action` - Perform actions (pressPrimaryButton, pressSecondaryButton)
 
+**Server-Sent Events (SSE):**
+
+The RooCode routes provide real-time streaming updates through Server-Sent Events, delivering live task progress and status information. For detailed documentation on SSE event structures, flows, and implementation details, see [RooRoutes Events Documentation](docs/roo-routes-events.md).
+
 **Cline Agent Routes:**
 
 - `POST /api/v1/cline/task` - Create new Cline task (basic support)
