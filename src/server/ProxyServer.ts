@@ -5,6 +5,7 @@ import { logger } from "../utils/logger";
 import { ExtensionController } from "../core/controller";
 import { registerRooRoutes } from "./routes/rooRoutes";
 import { registerClineRoutes } from "./routes/clineRoutes";
+import { registerFsRoutes } from "./routes/fsRoutes";
 
 export class ProxyServer {
   private fastify: FastifyInstance;
@@ -52,6 +53,10 @@ export class ProxyServer {
           {
             name: "Tasks",
             description: "Task management operations",
+          },
+          {
+            name: "FileSystem",
+            description: "File system operations",
           },
           {
             name: "Documentation",
@@ -109,6 +114,45 @@ export class ProxyServer {
         message: { type: "string" },
       },
     });
+    this.fastify.addSchema({
+      $id: "FileReadRequest",
+      type: "object",
+      required: ["path"],
+      properties: {
+        path: {
+          type: "string",
+          description: "File path relative to VS Code workspace root",
+        },
+      },
+    });
+    this.fastify.addSchema({
+      $id: "FileReadResponse",
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "The file path that was read",
+        },
+        content: {
+          type: "string",
+          description:
+            "File content (UTF-8 for text files, base64 for binary files)",
+        },
+        encoding: {
+          type: "string",
+          description:
+            "Content encoding (utf8 for text files, base64 for binary files)",
+        },
+        size: {
+          type: "number",
+          description: "File size in bytes",
+        },
+        mimeType: {
+          type: "string",
+          description: "Detected MIME type",
+        },
+      },
+    });
   }
 
   private setupRoutes(): void {
@@ -117,6 +161,7 @@ export class ProxyServer {
       async (fastify) => {
         await registerClineRoutes(fastify, this.controller);
         await registerRooRoutes(fastify, this.controller);
+        await registerFsRoutes(fastify);
 
         // GET /api/v1/openapi.json - OpenAPI specification
         fastify.get(

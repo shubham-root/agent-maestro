@@ -2,7 +2,7 @@
   "name": "agent-maestro",
   "displayName": "Agent Maestro",
   "description": "Empower seasoned professionals, break through creative boundaries, and leverage VS Code's best-in-class AI coding agents.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "icon": "assets/icons/icon.jpg",
   "publisher": "Joouis",
   "repository": "https://github.com/Joouis/agent-maestro",

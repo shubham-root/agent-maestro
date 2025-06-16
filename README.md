@@ -28,7 +28,7 @@ Install RooCode or its variants from the VS Code marketplace to ensure full func
 
 ### Installation
 
-Install the Agent Maestro extension from the [VS Code Marketplace](). Once activated, Agent Maestro automatically starts its API server on startup.
+Install the Agent Maestro extension from the VS Code Marketplace. Once activated, Agent Maestro automatically starts its API server on startup.
 
 ### Usage
 
@@ -43,8 +43,8 @@ Install the Agent Maestro extension from the [VS Code Marketplace](). Once activ
    - `Agent Maestro: Get API Server Status` - Check current server status
 
 3. **Development Resources**:
-   - **Examples**: Reference the examples web page for internal testing scenarios _(internal use only)_
    - **Type Definitions**: Explore the [@roo-code/types](https://www.npmjs.com/package/@roo-code/types) package for detailed event structures and data models
+   - **Examples**: The `examples/demo-site` directory is intended for internal testing purposes only. You may reference its implementation of Roo Code event handling as an example, but note that this sub-project is not officially supported.
 
 ## API Overview
 
@@ -80,4 +80,4 @@ Our development roadmap includes several exciting enhancements:
 
 ## License
 
-This project is licensed under the terms specified in the [LICENSE](LICENSE) file.
+This project is licensed under the terms specified in the [LICENSE](./LICENSE) file.
