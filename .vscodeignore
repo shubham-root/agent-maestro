@@ -39,6 +39,7 @@ dist/meta.json
 
 # Test files
 **/.vscode-test.*
+**/*.http
 
 # Examples and demos
 examples/**
