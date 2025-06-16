@@ -6,6 +6,7 @@ import { ExtensionController, ExtensionType } from "../../core/controller";
 import { MessageRequest, ActionRequest } from "../types";
 
 const filteredSayTypes = ["api_req_started"];
+const CLOSE_SSE_STREAM_DELAY_MS = 1_000;
 
 // Helper function to set up SSE headers and return sendSSE function
 function setupSSEResponse(reply: FastifyReply, request: FastifyRequest) {
@@ -88,7 +89,7 @@ function createTaskEventHandlers(
       setTimeout(() => {
         // Close the SSE stream
         reply.raw.end();
-      }, 1_000);
+      }, CLOSE_SSE_STREAM_DELAY_MS);
     },
     onTaskAborted: (handlerTaskId: string) => {
       logger.warn(`Task aborted: ${handlerTaskId}`);
@@ -100,7 +101,7 @@ function createTaskEventHandlers(
       setTimeout(() => {
         // Close the SSE stream
         reply.raw.end();
-      }, 1_000);
+      }, CLOSE_SSE_STREAM_DELAY_MS);
     },
     onTaskToolFailed: (handlerTaskId: string, tool: string, error: string) => {
       logger.error(`Tool failed in task ${handlerTaskId}: ${tool} - ${error}`);
