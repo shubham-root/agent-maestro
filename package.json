@@ -50,23 +50,38 @@
         "category": "Agent Maestro"
       },
       {
-        "command": "agent-maestro.startServer",
+        "command": "agent-maestro.startProxyServer",
         "title": "Start API Server",
         "category": "Agent Maestro"
       },
       {
-        "command": "agent-maestro.stopServer",
+        "command": "agent-maestro.stopProxyServer",
         "title": "Stop API Server",
         "category": "Agent Maestro"
       },
       {
-        "command": "agent-maestro.restartServer",
+        "command": "agent-maestro.restartProxyServer",
         "title": "Restart API Server",
         "category": "Agent Maestro"
       },
       {
-        "command": "agent-maestro.getServerStatus",
+        "command": "agent-maestro.getProxyServerStatus",
         "title": "Get API Server Status",
+        "category": "Agent Maestro"
+      },
+      {
+        "command": "agent-maestro.startMcpServer",
+        "title": "Start MCP Server",
+        "category": "Agent Maestro"
+      },
+      {
+        "command": "agent-maestro.stopMcpServer",
+        "title": "Stop MCP Server",
+        "category": "Agent Maestro"
+      },
+      {
+        "command": "agent-maestro.getMcpServerStatus",
+        "title": "Get MCP Server Status",
         "category": "Agent Maestro"
       }
     ]
@@ -81,7 +96,9 @@
     "axios": "^1.9.0",
     "es-toolkit": "^1.39.3",
     "fastify": "^5.3.3",
-    "uuid": "^11.1.0"
+    "fastmcp": "^3.5.0",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
@@ -122,7 +139,8 @@
     "prepare": "husky",
     "changeset": "changeset",
     "changeset:version": "pnpm changeset version && node .changeset/changelog-polish.js",
-    "changeset:tag": "changeset tag"
+    "changeset:tag": "changeset tag",
+    "mcp-inspector": "npx @modelcontextprotocol/inspector"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
