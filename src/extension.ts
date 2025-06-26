@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
-import { logger } from "./utils/logger.js";
-import { ExtensionController } from "./core/controller.js";
-import { ProxyServer } from "./server/ProxyServer.js";
-import { McpServer } from "./server/McpServer.mjs";
+import { logger } from "./utils/logger";
+import { ExtensionController } from "./core/controller";
+import { ProxyServer } from "./server/ProxyServer";
+import { McpServer } from "./server/McpServer";
+import { getSystemInfo } from "./utils/systemInfo";
 
 let controller: ExtensionController;
 let proxy: ProxyServer;
@@ -27,17 +28,26 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
-  proxy = new ProxyServer(controller, isDevMode ? 33333 : undefined);
   mcpServer = new McpServer({
     controller,
     port: isDevMode ? 33334 : undefined,
   });
+  proxy = new ProxyServer(controller, isDevMode ? 33333 : undefined, mcpServer);
 
   // Register commands
   const disposables = [
     vscode.commands.registerCommand("agent-maestro.getStatus", () => {
-      const status = controller.getExtensionStatus();
-      vscode.window.showInformationMessage(JSON.stringify(status, null, 2));
+      try {
+        const systemInfo = getSystemInfo(controller, mcpServer);
+        vscode.window.showInformationMessage(
+          JSON.stringify(systemInfo, null, 2),
+        );
+      } catch (error) {
+        logger.error("Error retrieving system information:", error);
+        vscode.window.showErrorMessage(
+          `Failed to get system status: ${(error as Error).message}`,
+        );
+      }
     }),
 
     vscode.commands.registerCommand(
