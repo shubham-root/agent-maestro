@@ -8,23 +8,16 @@ import { registerRooRoutes } from "./routes/rooRoutes";
 import { registerClineRoutes } from "./routes/clineRoutes";
 import { registerFsRoutes } from "./routes/fsRoutes";
 import { registerInfoRoutes } from "./routes/infoRoutes";
-import type { McpServer } from "./McpServer";
 
 export class ProxyServer {
   private fastify: FastifyInstance;
   private controller: ExtensionController;
-  private mcpServer?: McpServer;
   private isRunning = false;
   private port: number;
 
-  constructor(
-    controller: ExtensionController,
-    port = 23333,
-    mcpServer?: McpServer,
-  ) {
+  constructor(controller: ExtensionController, port = 23333) {
     this.controller = controller;
     this.port = port;
-    this.mcpServer = mcpServer;
     this.fastify = Fastify({
       logger: false, // Use our custom logger instead
     });
@@ -97,6 +90,11 @@ export class ProxyServer {
           type: "array",
           items: { type: "string" },
           description: "Optional array of base64-encoded images",
+        },
+        extensionId: {
+          type: "string",
+          description:
+            "Optional, assign task to a specific Roo variant extension like Kilo Code, by default is RooCode extension",
         },
       },
     });
@@ -174,11 +172,7 @@ export class ProxyServer {
         await registerClineRoutes(fastify, this.controller);
         await registerRooRoutes(fastify, this.controller);
         await registerFsRoutes(fastify);
-
-        // Register info routes only if MCP server is available
-        if (this.mcpServer) {
-          await registerInfoRoutes(fastify, this.controller, this.mcpServer);
-        }
+        await registerInfoRoutes(fastify, this.controller);
 
         // GET /api/v1/openapi.json - OpenAPI specification
         fastify.get(

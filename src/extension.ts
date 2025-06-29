@@ -28,17 +28,22 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
-  mcpServer = new McpServer({
-    controller,
-    port: isDevMode ? 33334 : undefined,
-  });
-  proxy = new ProxyServer(controller, isDevMode ? 33333 : undefined, mcpServer);
+  try {
+    mcpServer = new McpServer({
+      controller,
+      port: isDevMode ? 33334 : undefined,
+    });
+  } catch (error) {
+    logger.error("Failed to initialize MCP server:", error);
+  }
+
+  proxy = new ProxyServer(controller, isDevMode ? 33333 : undefined);
 
   // Register commands
   const disposables = [
     vscode.commands.registerCommand("agent-maestro.getStatus", () => {
       try {
-        const systemInfo = getSystemInfo(controller, mcpServer);
+        const systemInfo = getSystemInfo(controller);
         vscode.window.showInformationMessage(
           JSON.stringify(systemInfo, null, 2),
         );

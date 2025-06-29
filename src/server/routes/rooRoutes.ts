@@ -2,7 +2,7 @@ import { ClineMessage } from "@roo-code/types";
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../utils/logger";
-import { ExtensionController, ExtensionType } from "../../core/controller";
+import { ExtensionController } from "../../core/controller";
 import { MessageRequest, ActionRequest } from "../types";
 import {
   isMessageCompleted,
@@ -191,6 +191,11 @@ export async function registerRooRoutes(
               description:
                 "Whether to open the task in a new tab. Note: When enabled, users cannot send follow-up messages due to issue https://github.com/RooCodeInc/Roo-Code/issues/4412",
             },
+            extensionId: {
+              type: "string",
+              description:
+                "Assign task to the Roo variant extension like Kilo Code, by default is RooCode extension",
+            },
           },
           required: ["text"],
         },
@@ -220,7 +225,7 @@ export async function registerRooRoutes(
     },
     async (request, reply) => {
       try {
-        const { text, images, configuration, newTab } =
+        const { text, images, configuration, newTab, extensionId } =
           request.body as MessageRequest;
 
         if (!text || text.trim() === "") {
@@ -229,7 +234,8 @@ export async function registerRooRoutes(
           });
         }
 
-        if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
+        const adapter = controller.getRooAdapter(extensionId);
+        if (!adapter?.isActive) {
           return reply.status(500).send({
             message: "RooCode extension is not available",
           });
@@ -243,16 +249,13 @@ export async function registerRooRoutes(
           // Create new task logic
           logger.info("Creating new RooCode task");
 
-          const newTaskId = await controller.startNewTask(
-            {
-              text,
-              images,
-              configuration,
-              newTab,
-              eventHandlers,
-            },
-            ExtensionType.ROO_CODE,
-          );
+          const newTaskId = await adapter.startNewTask({
+            text,
+            images,
+            configuration,
+            newTab,
+            eventHandlers,
+          });
 
           // Send initial task created event
           sendSSE(SSEEventType.TASK_CREATED, {
@@ -332,8 +335,10 @@ export async function registerRooRoutes(
     },
     async (request, reply) => {
       try {
-        const { taskId } = request.params as { taskId: string };
-        const { text, images } = request.body as MessageRequest;
+        const { taskId } = request.params as {
+          taskId: string;
+        };
+        const { text, images, extensionId } = request.body as MessageRequest;
 
         if (!text || text.trim() === "") {
           return reply.status(400).send({
@@ -341,16 +346,16 @@ export async function registerRooRoutes(
           });
         }
 
-        if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
+        const adapter = controller.getRooAdapter(extensionId);
+        if (!adapter?.isActive) {
           return reply.status(500).send({
             message: "RooCode extension is not available",
           });
         }
 
         // Check if task exists in active tasks or history
-        const activeTaskIds = controller.getActiveTaskIds();
-        const isTaskInHistory =
-          await controller.rooCodeAdapter.isTaskInHistory(taskId);
+        const activeTaskIds = adapter.getActiveTaskIds();
+        const isTaskInHistory = await adapter.isTaskInHistory(taskId);
 
         if (!activeTaskIds.includes(taskId) && !isTaskInHistory) {
           return reply.status(404).send({
@@ -368,19 +373,14 @@ export async function registerRooRoutes(
 
           // If task is in history, resume it first
           if (!activeTaskIds.includes(taskId) && isTaskInHistory) {
-            await controller.rooCodeAdapter.resumeTask(taskId);
+            await adapter.resumeTask(taskId);
           }
 
           // Send the message
-          await controller.sendMessage(
-            {
-              text,
-              images,
-              taskId,
-              eventHandlers,
-            },
-            ExtensionType.ROO_CODE,
-          );
+          await adapter.sendMessage(text, images, {
+            taskId,
+            eventHandlers,
+          });
 
           // Send initial task resumed event
           sendSSE(SSEEventType.TASK_RESUMED, {
@@ -440,6 +440,11 @@ export async function registerRooRoutes(
               ],
               description: "The action to perform on the task",
             },
+            extensionId: {
+              type: "string",
+              description:
+                "Assign task to the Roo variant extension like Kilo Code, by default is RooCode extension",
+            },
           },
           required: ["action"],
         },
@@ -464,20 +469,22 @@ export async function registerRooRoutes(
       },
     },
     async (request, reply) => {
-      const { taskId } = request.params as { taskId: string };
-      const { action } = request.body as ActionRequest;
+      const { taskId } = request.params as {
+        taskId: string;
+      };
+      const { action, extensionId } = request.body as ActionRequest;
 
       try {
-        if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
+        const adapter = controller.getRooAdapter(extensionId);
+        if (!adapter?.isActive) {
           return reply.status(500).send({
             message: "RooCode extension is not available",
           });
         }
 
         // Check if task exists in active tasks or history
-        const activeTaskIds = controller.getActiveTaskIds();
-        const isTaskInHistory =
-          await controller.rooCodeAdapter.isTaskInHistory(taskId);
+        const activeTaskIds = adapter.getActiveTaskIds();
+        const isTaskInHistory = await adapter.isTaskInHistory(taskId);
 
         if (!activeTaskIds.includes(taskId) && !isTaskInHistory) {
           return reply.status(404).send({
@@ -487,12 +494,12 @@ export async function registerRooRoutes(
 
         // If task is in history, resume it first
         if (!activeTaskIds.includes(taskId) && isTaskInHistory) {
-          await controller.rooCodeAdapter.resumeTask(taskId);
+          await adapter.resumeTask(taskId);
         }
 
         switch (action) {
           case "pressPrimaryButton":
-            await controller.pressPrimaryButton(ExtensionType.ROO_CODE);
+            await adapter.pressPrimaryButton();
             logger.info(`Primary button pressed for task ${taskId}`);
             return reply.send({
               id: taskId,
@@ -501,7 +508,7 @@ export async function registerRooRoutes(
             });
 
           case "pressSecondaryButton":
-            await controller.pressSecondaryButton(ExtensionType.ROO_CODE);
+            await adapter.pressSecondaryButton();
             logger.info(`Secondary button pressed for task ${taskId}`);
             return reply.send({
               id: taskId,
@@ -512,7 +519,7 @@ export async function registerRooRoutes(
           case "cancel":
             // Check if the taskId is in the current active tasks
             if (activeTaskIds.includes(taskId)) {
-              await controller.rooCodeAdapter.cancelCurrentTask();
+              await adapter.cancelCurrentTask();
               logger.info(`Task cancelled: ${taskId}`);
               return reply.send({
                 message: "Task cancelled successfully",
@@ -524,7 +531,7 @@ export async function registerRooRoutes(
             }
 
           case "resume":
-            await controller.rooCodeAdapter.resumeTask(taskId);
+            await adapter.resumeTask(taskId);
             logger.info(`Task resumed: ${taskId}`);
             return reply.send({
               id: taskId,
@@ -556,6 +563,17 @@ export async function registerRooRoutes(
         summary: "Get RooCode task history",
         description:
           "Retrieves the complete task history from RooCode extension configuration",
+        querystring: {
+          type: "object",
+          properties: {
+            extensionId: {
+              type: "string",
+              description:
+                "Assign task to the Roo variant extension like Kilo Code, by default is RooCode extension",
+            },
+          },
+          required: [],
+        },
         response: {
           200: {
             description: "Task history retrieved successfully",
@@ -564,6 +582,11 @@ export async function registerRooRoutes(
               data: {
                 type: "array",
                 items: { $ref: "HistoryItem#" },
+              },
+              extensionId: {
+                type: "string",
+                description:
+                  "Assign task to the Roo variant extension like Kilo Code, by default is RooCode extension",
               },
             },
             required: ["data"],
@@ -575,10 +598,21 @@ export async function registerRooRoutes(
         },
       },
     },
-    async (_request, reply) => {
+    async (request, reply) => {
       try {
+        const { extensionId } = request.query as { extensionId?: string };
+
+        // Get the appropriate adapter
+        const adapter = controller.getRooAdapter(extensionId);
+
+        if (!adapter) {
+          return reply.status(500).send({
+            message: "RooCode extension is not available",
+          });
+        }
+
         return reply.send({
-          data: controller.rooCodeAdapter.getTaskHistory(),
+          data: adapter.getTaskHistory(),
         });
       } catch (error) {
         logger.error("Error retrieving task history:", error);
@@ -603,6 +637,17 @@ export async function registerRooRoutes(
             taskId: { type: "string" },
           },
           required: ["taskId"],
+        },
+        querystring: {
+          type: "object",
+          properties: {
+            extensionId: {
+              type: "string",
+              description:
+                "Assign task to the Roo variant extension like Kilo Code, by default is RooCode extension",
+            },
+          },
+          required: [],
         },
         response: {
           200: {
@@ -679,16 +724,9 @@ export async function registerRooRoutes(
       },
     },
     async (request, reply) => {
-      // Extension availability check
-      if (!controller.isExtensionAvailable(ExtensionType.ROO_CODE)) {
-        return reply.code(503).send({
-          error: "RooCode extension not available",
-          message: "The RooCode extension is not currently available",
-        });
-      }
-
       try {
         const { taskId } = request.params as { taskId: string };
+        const { extensionId } = request.query as { extensionId?: string };
 
         // Validate taskId
         if (!taskId || typeof taskId !== "string") {
@@ -698,7 +736,16 @@ export async function registerRooRoutes(
           });
         }
 
-        const taskData = await controller.rooCodeAdapter.getTaskWithId(taskId);
+        // Get the appropriate adapter
+        const adapter = controller.getRooAdapter(extensionId);
+
+        if (!adapter) {
+          return reply.status(500).send({
+            message: "RooCode extension is not available",
+          });
+        }
+
+        const taskData = await adapter.getTaskWithId(taskId);
 
         return reply.send(taskData);
       } catch (error) {

@@ -1,13 +1,11 @@
 import { FastifyInstance } from "fastify";
 import { logger } from "../../utils/logger";
 import { ExtensionController } from "../../core/controller";
-import type { McpServer } from "../../server/McpServer";
 import { getSystemInfo } from "../../utils/systemInfo";
 
 export async function registerInfoRoutes(
   fastify: FastifyInstance,
   controller: ExtensionController,
-  mcpServer: McpServer,
 ) {
   // GET /api/v1/info - Get system and extension information
   fastify.get(
@@ -35,27 +33,15 @@ export async function registerInfoRoutes(
               },
               extensions: {
                 type: "object",
-                properties: {
-                  cline: {
-                    type: "object",
-                    properties: {
-                      isInstalled: { type: "boolean" },
-                      isActive: { type: "boolean" },
-                      version: { type: "string" },
-                    },
-                    required: ["isInstalled", "isActive"],
+                additionalProperties: {
+                  type: "object",
+                  properties: {
+                    isInstalled: { type: "boolean" },
+                    isActive: { type: "boolean" },
+                    version: { type: "string" },
                   },
-                  roo: {
-                    type: "object",
-                    properties: {
-                      isInstalled: { type: "boolean" },
-                      isActive: { type: "boolean" },
-                      version: { type: "string" },
-                    },
-                    required: ["isInstalled", "isActive"],
-                  },
+                  required: ["isInstalled", "isActive"],
                 },
-                required: ["cline", "roo"],
               },
               vscodeVersion: {
                 type: "string",
@@ -73,15 +59,6 @@ export async function registerInfoRoutes(
                 description: "Current workspace root path",
                 example: "/Users/joou/workspace/agent-maestro",
               },
-              mcpServer: {
-                type: "object",
-                properties: {
-                  isRunning: { type: "boolean" },
-                  port: { type: "number" },
-                  url: { type: "string" },
-                },
-                required: ["isRunning", "port", "url"],
-              },
               timestamp: {
                 type: "string",
                 format: "date-time",
@@ -95,7 +72,6 @@ export async function registerInfoRoutes(
               "vscodeVersion",
               "os",
               "workspace",
-              "mcpServer",
               "timestamp",
             ],
           },
@@ -108,7 +84,7 @@ export async function registerInfoRoutes(
     },
     async (_request, reply) => {
       try {
-        const systemInfo = getSystemInfo(controller, mcpServer);
+        const systemInfo = getSystemInfo(controller);
         return reply.send(systemInfo);
       } catch (error) {
         logger.error("Error retrieving system information:", error);
