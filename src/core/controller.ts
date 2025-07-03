@@ -3,7 +3,11 @@ import * as vscode from "vscode";
 import { logger } from "../utils/logger";
 import { ClineAdapter } from "./ClineAdapter";
 import { RooCodeAdapter } from "./RooCodeAdapter";
-import { AgentMaestroConfiguration, readConfiguration } from "../utils/config";
+import {
+  AgentMaestroConfiguration,
+  DEFAULT_CONFIG,
+  readConfiguration,
+} from "../utils/config";
 import { ExtensionStatus } from "../utils/systemInfo";
 
 /**
@@ -38,7 +42,10 @@ export class ExtensionController extends EventEmitter {
     }
 
     // Check and create adapters for each variant identifier
-    for (const identifier of config.rooVariantIdentifiers) {
+    for (const identifier of new Set([
+      ...config.rooVariantIdentifiers,
+      DEFAULT_CONFIG.defaultRooIdentifier,
+    ])) {
       if (
         identifier !== config.defaultRooIdentifier &&
         this.isExtensionInstalled(identifier)
