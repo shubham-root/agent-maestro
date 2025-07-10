@@ -49,10 +49,34 @@ export async function registerInfoRoutes(
                 example: "1.100.0",
               },
               os: {
-                type: "string",
-                description:
-                  "Operating system information in format: Platform Architecture Release",
-                example: "Darwin arm64 24.5.0",
+                type: "object",
+                description: "Operating system information",
+                properties: {
+                  platform: {
+                    type: "string",
+                    description:
+                      "Operating system platform, get from os.platform() of Node.js",
+                    example: "darwin",
+                  },
+                  arch: {
+                    type: "string",
+                    description:
+                      "System architecture, get from os.arch() of Node.js",
+                    example: "arm64",
+                  },
+                  release: {
+                    type: "string",
+                    description:
+                      "OS release version, get from os.release() of Node.js",
+                    example: "24.5.0",
+                  },
+                  homedir: {
+                    type: "string",
+                    description:
+                      "User home directory path, get from os.homedir() of Node.js",
+                  },
+                },
+                required: ["platform", "arch", "release", "homedir"],
               },
               workspace: {
                 type: "string",
