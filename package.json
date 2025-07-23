@@ -2,7 +2,7 @@
   "name": "agent-maestro",
   "displayName": "Agent Maestro",
   "description": "Headless VS Code AI: bring best-in-class AI agents into any workflow — assist, automate tasks, and generate solutions everywhere.",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "icon": "assets/icons/icon.png",
   "publisher": "Joouis",
   "repository": "https://github.com/Joouis/agent-maestro",
@@ -149,7 +149,7 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
     "@changesets/cli": "^2.29.4",
-    "@roo-code/types": "^1.31.0",
+    "@roo-code/types": "^1.36.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@types/vscode": "^1.100.0",
