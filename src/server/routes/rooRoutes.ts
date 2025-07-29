@@ -1,39 +1,41 @@
-import { ClineMessage } from "@roo-code/types";
+import { ClineMessage, RooCodeEventName } from "@roo-code/types";
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { v4 as uuidv4 } from "uuid";
 import * as vscode from "vscode";
 import { logger } from "../../utils/logger";
 import { ExtensionController } from "../../core/controller";
-import { MessageRequest, ActionRequest } from "../types";
-import {
-  isMessageCompleted,
-  areCompletedMessagesEqual,
-} from "../utils/rooUtils";
+import { MessageRequest, ActionRequest, TaskEvent } from "../types";
 import {
   addAgentMaestroMcpConfig,
   getAvailableExtensions,
 } from "../../utils/mcpConfig";
-
-export enum SSEEventType {
-  STREAM_CLOSED = "stream_closed",
-  MESSAGE = "message",
-  TASK_COMPLETED = "task_completed",
-  TASK_ABORTED = "task_aborted",
-  TOOL_FAILED = "tool_failed",
-  TASK_CREATED = "task_created",
-  ERROR = "error",
-  TASK_RESUMED = "task_resumed",
-}
+import { isEqual, last, throttle } from "es-toolkit";
 
 const filteredSayTypes = ["api_req_started"];
-const CLOSE_SSE_STREAM_DELAY_MS = 1_000;
 
-// Helper function to set up SSE headers and return sendSSE function
-function setupSSEResponse(
+// Helper function to create event handlers for task streaming
+const taskEventHandler = (
+  event: TaskEvent,
+  sendSSE: (event: TaskEvent) => void,
+) => {
+  switch (event.name) {
+    case RooCodeEventName.Message: {
+      const { message } = (event as TaskEvent<RooCodeEventName.Message>).data;
+      if (filteredSayTypes.includes(message.say ?? "")) {
+        return;
+      }
+    }
+
+    default:
+      sendSSE(event);
+  }
+};
+
+// Helper function to process event stream with deduplication
+const processEventStream = async (
+  eventStream: AsyncGenerator<TaskEvent, void, unknown>,
   reply: FastifyReply,
   request: FastifyRequest,
-  onDisconnect?: () => void,
-) {
+): Promise<void> => {
   // Set up SSE headers
   reply.raw.setHeader("Content-Type", "text/event-stream");
   reply.raw.setHeader("Cache-Control", "no-cache");
@@ -41,104 +43,51 @@ function setupSSEResponse(
   reply.raw.setHeader("Access-Control-Allow-Origin", "*");
   reply.raw.setHeader("Access-Control-Allow-Headers", "Cache-Control");
 
-  // Helper function to send SSE data
-  const sendSSE = (eventType: string, data: any) => {
-    const sseData = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
-    reply.raw.write(sseData);
-  };
-
   // Handle client disconnect
   request.raw.on("close", () => {
     logger.info("Client disconnected from SSE stream");
-    onDisconnect?.();
   });
 
   request.raw.on("error", (err: Error) => {
     logger.error("SSE stream error:", err);
-    onDisconnect?.();
   });
 
-  // Helper function to close SSE stream with event notification
-  const closeSSEStream = (message: string) => {
-    sendSSE(SSEEventType.STREAM_CLOSED, { message });
-
-    setTimeout(() => {
-      reply.raw.end();
-      onDisconnect?.();
-    }, CLOSE_SSE_STREAM_DELAY_MS);
+  // Helper function to send SSE data
+  const sendSSE = (event: TaskEvent) => {
+    const sseData = `event: ${event.name}\ndata: ${JSON.stringify(event.data)}\n\n`;
+    reply.raw.write(sseData);
   };
 
-  return { sendSSE, closeSSEStream };
-}
-
-// Helper function to create event handlers for task streaming
-function createTaskEventHandlers(
-  sendSSE: (eventType: string, data: any) => void,
-  closeSSEStream: (message: string) => void,
-) {
   let lastMessage: ClineMessage | undefined;
-
-  return {
-    onMessage: (handlerTaskId: string, message: ClineMessage) => {
-      if (filteredSayTypes.includes(message.say ?? "")) {
-        return;
+  // Process events from async generator
+  for await (const event of eventStream) {
+    switch (event.name) {
+      case RooCodeEventName.Message: {
+        const { message } = (event as TaskEvent<RooCodeEventName.Message>).data;
+        if (filteredSayTypes.includes(message.say ?? "")) {
+          continue; // Skip filtered messages
+        }
+        if (
+          !message.partial &&
+          lastMessage &&
+          !lastMessage.partial &&
+          isEqual(lastMessage, message)
+        ) {
+          // Skip sending duplicate complete messages
+          continue;
+        }
+        if (!message.partial) {
+          lastMessage = message;
+        }
       }
 
-      if (areCompletedMessagesEqual(message, lastMessage)) {
-        // Skip duplicate message
-        return;
-      }
+      default:
+        sendSSE(event);
+    }
+  }
 
-      // Store current message for next comparison
-      if (isMessageCompleted(message)) {
-        lastMessage = message;
-      }
-
-      sendSSE(SSEEventType.MESSAGE, {
-        taskId: handlerTaskId,
-        message,
-      });
-
-      // Close SSE stream when followup question is asked
-      if (isMessageCompleted(message) && message.ask === "followup") {
-        closeSSEStream("followup_question");
-      }
-    },
-    onTaskCompleted: (
-      handlerTaskId: string,
-      tokenUsage: any,
-      toolUsage: any,
-    ) => {
-      logger.info(`Task completed: ${handlerTaskId}`, {
-        tokenUsage,
-        toolUsage,
-      });
-      sendSSE(SSEEventType.TASK_COMPLETED, {
-        taskId: handlerTaskId,
-        tokenUsage,
-        toolUsage,
-      });
-
-      closeSSEStream("task_completed");
-    },
-    onTaskAborted: (handlerTaskId: string) => {
-      logger.warn(`Task aborted: ${handlerTaskId}`);
-      sendSSE(SSEEventType.TASK_ABORTED, {
-        taskId: handlerTaskId,
-      });
-
-      closeSSEStream("task_aborted");
-    },
-    onTaskToolFailed: (handlerTaskId: string, tool: string, error: string) => {
-      logger.error(`Tool failed in task ${handlerTaskId}: ${tool} - ${error}`);
-      sendSSE(SSEEventType.TOOL_FAILED, {
-        taskId: handlerTaskId,
-        tool,
-        error,
-      });
-    },
-  };
-}
+  logger.info(`Completed RooCode task stream`);
+};
 
 export async function registerRooRoutes(
   fastify: FastifyInstance,
@@ -254,52 +203,24 @@ export async function registerRooRoutes(
           });
         }
 
-        let currentTaskId: string | undefined;
-        const onDisconnect = () => {
-          if (currentTaskId) {
-            adapter.removeTaskHandlers(currentTaskId);
-          }
-        };
-
-        // Use shared SSE setup
-        const { sendSSE, closeSSEStream } = setupSSEResponse(
-          reply,
-          request,
-          onDisconnect,
-        );
-        const eventHandlers = createTaskEventHandlers(sendSSE, closeSSEStream);
-
         try {
-          // Create new task logic
-          logger.info("Creating new RooCode task");
+          // Create new task using async generator
+          logger.info("Creating new RooCode task with async generator");
 
-          const newTaskId = await adapter.startNewTask({
+          const eventStream = adapter.startNewTask({
             text,
             images,
             configuration,
             newTab,
-            eventHandlers,
           });
 
-          // Store the task ID for cleanup on disconnect
-          currentTaskId = newTaskId;
-
-          // Send initial task created event
-          sendSSE(SSEEventType.TASK_CREATED, {
-            taskId: newTaskId || uuidv4(),
-            status: "created",
-            message: "Task created successfully",
-          });
-
-          logger.info(`Created new RooCode task with SSE: ${newTaskId}`);
-        } catch (taskError) {
-          logger.error("Error processing RooCode task:", taskError);
-          sendSSE(SSEEventType.ERROR, {
-            error:
-              taskError instanceof Error
-                ? taskError.message
-                : "Unknown error occurred",
-          });
+          await processEventStream(eventStream, reply, request);
+        } catch (error) {
+          logger.error("Error processing RooCode task:", error);
+          reply.raw.write(
+            `event: ${RooCodeEventName.TaskAborted}\ndata: {"message":"${error instanceof Error ? error.message : "Unknown error occurred"}"}\n\n`,
+          );
+        } finally {
           reply.raw.end();
         }
       } catch (error) {
@@ -390,20 +311,8 @@ export async function registerRooRoutes(
           });
         }
 
-        const onDisconnect = () => {
-          adapter.removeTaskHandlers(taskId);
-        };
-
-        // Use shared SSE setup
-        const { sendSSE, closeSSEStream } = setupSSEResponse(
-          reply,
-          request,
-          onDisconnect,
-        );
-        const eventHandlers = createTaskEventHandlers(sendSSE, closeSSEStream);
-
         try {
-          // Send message to existing task logic
+          // Send message to existing task using async generator
           logger.info(`Sending message to existing task: ${taskId}`);
 
           // If task is in history, resume it first
@@ -411,26 +320,20 @@ export async function registerRooRoutes(
             await adapter.resumeTask(taskId);
           }
 
-          // Send initial task resumed event
-          sendSSE(SSEEventType.TASK_RESUMED, {
+          // Send the message and process events from async generator
+          const eventStream = adapter.sendMessage(text, images, {
             taskId,
-            status: "resumed",
-            message: "Task resumed successfully",
           });
 
-          // Send the message
-          await adapter.sendMessage(text, images, {
-            taskId,
-            eventHandlers,
-          });
-        } catch (taskError) {
-          logger.error("Error processing RooCode task message:", taskError);
-          sendSSE(SSEEventType.ERROR, {
-            error:
-              taskError instanceof Error
-                ? taskError.message
-                : "Unknown error occurred",
-          });
+          await processEventStream(eventStream, reply, request);
+
+          logger.info(`Completed message processing for task: ${taskId}`);
+        } catch (error) {
+          logger.error("Error processing RooCode task:", error);
+          reply.raw.write(
+            `event: ${RooCodeEventName.TaskAborted}\ndata: {"message":"${error instanceof Error ? error.message : "Unknown error occurred"}"}\n\n`,
+          );
+        } finally {
           reply.raw.end();
         }
       } catch (error) {
