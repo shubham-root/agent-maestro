@@ -9,6 +9,7 @@ import {
   getAvailableExtensions,
   addAgentMaestroMcpConfig,
 } from "./utils/mcpConfig";
+import { getChatModelsQuickPickItems } from "./utils/chatModels";
 
 let controller: ExtensionController;
 let proxy: ProxyServer;
@@ -305,6 +306,131 @@ export async function activate(context: vscode.ExtensionContext) {
           logger.error("Error installing MCP configuration:", error);
           vscode.window.showErrorMessage(
             `Failed to install MCP configuration: ${(error as Error).message}`,
+          );
+        }
+      },
+    ),
+
+    vscode.commands.registerCommand(
+      "agent-maestro.configureClaudeCode",
+      async () => {
+        try {
+          const workspaceRoot =
+            vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+          if (!workspaceRoot) {
+            vscode.window.showErrorMessage(
+              "No workspace folder found. Please open a workspace to configure Claude Code settings.",
+            );
+            return;
+          }
+
+          const claudeDir = vscode.Uri.joinPath(
+            vscode.Uri.file(workspaceRoot),
+            ".claude",
+          );
+          const settingsFile = vscode.Uri.joinPath(claudeDir, "settings.json");
+
+          // Check if settings file exists and confirm override
+          let existingSettings: any = {};
+          let fileExists = false;
+          try {
+            const settingsContent =
+              await vscode.workspace.fs.readFile(settingsFile);
+            existingSettings = JSON.parse(settingsContent.toString());
+            fileExists = true;
+
+            const shouldOverride = await vscode.window.showQuickPick(
+              ["Yes", "No"],
+              {
+                title: "Claude Code Settings Found",
+                placeHolder:
+                  "Settings file already exists. Do you want to update it?",
+              },
+            );
+
+            if (shouldOverride !== "Yes") {
+              return;
+            }
+          } catch (error) {
+            // File doesn't exist, continue with creation
+          }
+
+          // Get current proxy server port
+          const config = readConfiguration();
+          const currentPort = isDevMode ? 33333 : config.proxyServerPort;
+
+          const modelOptions = await getChatModelsQuickPickItems();
+
+          if (!modelOptions) {
+            return;
+          }
+
+          const selectedMainModel = await vscode.window.showQuickPick(
+            modelOptions,
+            {
+              title: "Select main model (for ANTHROPIC_MODEL)",
+              placeHolder: "Name of custom model to use",
+            },
+          );
+
+          if (!selectedMainModel?.modelId) {
+            return;
+          }
+
+          const selectedFastModel = await vscode.window.showQuickPick(
+            modelOptions,
+            {
+              title: "Select small fast model (for ANTHROPIC_SMALL_FAST_MODEL)",
+              placeHolder: "Name of Haiku-class model for background tasks",
+            },
+          );
+
+          if (!selectedFastModel?.modelId) {
+            return;
+          }
+
+          // Preserve existing auth token if it has a meaningful value
+          const currentToken = existingSettings?.env?.ANTHROPIC_AUTH_TOKEN;
+          const authToken = currentToken
+            ? currentToken
+            : "The Anthropic-compatible endpoints supported by Agent Maestro :)";
+
+          // Create new settings
+          const newSettings = {
+            ...existingSettings,
+            env: {
+              ...existingSettings?.env,
+              ANTHROPIC_BASE_URL: `http://localhost:${currentPort}/api/anthropic`,
+              ANTHROPIC_AUTH_TOKEN: authToken,
+              ANTHROPIC_MODEL: selectedMainModel.modelId,
+              ANTHROPIC_SMALL_FAST_MODEL: selectedFastModel.modelId,
+            },
+          };
+
+          // Ensure .claude directory exists
+          try {
+            await vscode.workspace.fs.createDirectory(claudeDir);
+          } catch (error) {
+            // Directory might already exist, ignore error
+          }
+
+          // Write settings file
+          await vscode.workspace.fs.writeFile(
+            settingsFile,
+            Buffer.from(JSON.stringify(newSettings, null, 2)),
+          );
+
+          vscode.window.showInformationMessage(
+            `Claude Code settings ${fileExists ? "updated" : "created"} successfully! The settings point to Agent Maestro proxy server for Anthropic-compatible API.`,
+          );
+
+          logger.info(
+            `Claude Code settings ${fileExists ? "updated" : "created"}: ${settingsFile.fsPath}`,
+          );
+        } catch (error) {
+          logger.error("Error configuring Claude Code settings:", error);
+          vscode.window.showErrorMessage(
+            `Failed to configure Claude Code settings: ${(error as Error).message}`,
           );
         }
       },
