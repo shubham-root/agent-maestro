@@ -1,61 +1,128 @@
 import Anthropic from "@anthropic-ai/sdk";
-import * as vscode from "vscode";
+import {
+  LanguageModelChatMessage,
+  LanguageModelChatTool,
+  LanguageModelChatToolMode,
+  LanguageModelTextPart,
+  LanguageModelToolCallPart,
+  LanguageModelToolResultPart,
+} from "vscode";
 
-/**
- * Extract text content from a single Anthropic content block
- */
-function extractTextFromContentBlock(
-  block: Anthropic.Messages.ContentBlockParam,
-): string {
-  switch (block.type) {
-    case "text":
-      return block.text;
-    case "thinking":
-      return block.thinking;
-    case "redacted_thinking":
-      return block.data;
-    case "image":
-      return JSON.stringify(block);
-    case "document":
-      return ""; // Ignore document blocks as specified
-    case "tool_use":
-    case "tool_result":
-    case "server_tool_use":
-    case "web_search_tool_result":
-      return JSON.stringify(block);
-    default:
-      // Handle any future block types
-      return JSON.stringify(block);
+const textBlockParamToVSCodePart = (param: Anthropic.Messages.TextBlockParam) =>
+  new LanguageModelTextPart(param.text);
+
+const imageBlockParamToVSCodePart = (
+  param: Anthropic.Messages.ImageBlockParam,
+) => new LanguageModelTextPart(JSON.stringify(param));
+
+const thinkingBlockParamToVSCodePart = (
+  param: Anthropic.Messages.ThinkingBlockParam,
+) => new LanguageModelTextPart(param.thinking);
+
+const redactedThinkingBlockParamToVSCodePart = (
+  param: Anthropic.Messages.RedactedThinkingBlockParam,
+) => new LanguageModelTextPart(param.data);
+
+const toolUseBlockParamToVSCodePart = (
+  param: Anthropic.Messages.ToolUseBlockParam,
+) => new LanguageModelToolCallPart(param.id, param.name, param.input as object);
+
+const toolResultBlockParamToVSCodePart = (
+  param: Anthropic.Messages.ToolResultBlockParam,
+) => {
+  if (!param.content) {
+    // If the tool result has no content, return an empty array of parts to indicate no output was produced.
+    return new LanguageModelToolResultPart(param.tool_use_id, []);
   }
-}
 
-/**
- * Check if content array contains media blocks (image or document)
- */
-function hasMediaBlocks(
-  content: Array<Anthropic.Messages.ContentBlockParam>,
-): boolean {
-  return content.some(
-    (block) => block.type === "image" || block.type === "document",
+  const content =
+    typeof param.content === "string"
+      ? [new LanguageModelTextPart(param.content)]
+      : param.content.map((c) =>
+          c.type === "text"
+            ? textBlockParamToVSCodePart(c)
+            : new LanguageModelTextPart(JSON.stringify(c)),
+        );
+  return new LanguageModelToolResultPart(param.tool_use_id, content);
+};
+
+const serverToolUseBlockParamToVSCodePart = (
+  param: Anthropic.Messages.ServerToolUseBlockParam,
+) => {
+  return new LanguageModelToolCallPart(
+    param.id,
+    param.name,
+    param.input as object,
   );
-}
+};
+
+const webSearchToolResultBlockParamToVSCodePart = (
+  param: Anthropic.Messages.WebSearchToolResultBlockParam,
+) => {
+  const content = Array.isArray(param.content)
+    ? param.content.map((c) => new LanguageModelTextPart(JSON.stringify(c)))
+    : [new LanguageModelTextPart(JSON.stringify(param.content))];
+  return new LanguageModelToolResultPart(param.tool_use_id, content);
+};
 
 /**
- * Convert Anthropic MessageParam content to text string
+ * Convert Anthropic MessageParam content to VSCode LanguageModel content parts
  */
-function convertContentToText(
+const convertContentToVSCodeParts = (
   content: string | Array<Anthropic.Messages.ContentBlockParam>,
-): string {
+): Array<
+  | LanguageModelTextPart
+  | LanguageModelToolResultPart
+  | LanguageModelToolCallPart
+> => {
   if (typeof content === "string") {
-    return content;
+    return [new LanguageModelTextPart(content)];
   }
 
-  const textParts = content
-    .map((block) => extractTextFromContentBlock(block))
-    .filter((text) => text.length > 0); // Remove empty strings (e.g., from ignored documents)
+  const parts: Array<
+    | LanguageModelTextPart
+    | LanguageModelToolResultPart
+    | LanguageModelToolCallPart
+  > = [];
 
-  return textParts.join("\n\n");
-}
+  for (const block of content) {
+    switch (block.type) {
+      case "text":
+        parts.push(textBlockParamToVSCodePart(block));
+        break;
+      case "image":
+        // Images are represented as text in VSCode LM API
+        parts.push(imageBlockParamToVSCodePart(block));
+        break;
+      case "document":
+        // Skip document blocks as specified in original implementation
+        break;
+      case "thinking":
+        parts.push(thinkingBlockParamToVSCodePart(block));
+        break;
+      case "redacted_thinking":
+        parts.push(redactedThinkingBlockParamToVSCodePart(block));
+        break;
+      case "tool_use":
+        parts.push(toolUseBlockParamToVSCodePart(block));
+        break;
+      case "tool_result":
+        parts.push(toolResultBlockParamToVSCodePart(block));
+        break;
+      case "server_tool_use":
+        parts.push(serverToolUseBlockParamToVSCodePart(block));
+        break;
+      case "web_search_tool_result":
+        parts.push(webSearchToolResultBlockParamToVSCodePart(block));
+        break;
+      default:
+        // Handle any other block types as text
+        parts.push(new LanguageModelTextPart(JSON.stringify(block)));
+    }
+  }
+
+  return parts.length > 0 ? parts : [new LanguageModelTextPart("")];
+};
 
 /**
  * Convert a single Anthropic MessageParam to VS Code LanguageModelChatMessage(s)
@@ -63,29 +130,35 @@ function convertContentToText(
  * @param message - Anthropic MessageParam with role and content
  * @returns Single message or array of messages based on content type
  */
-export function convertAnthropicMessageToVSCode(
+export const convertAnthropicMessageToVSCode = (
   message: Anthropic.Messages.MessageParam,
-): vscode.LanguageModelChatMessage | vscode.LanguageModelChatMessage[] {
+): LanguageModelChatMessage | LanguageModelChatMessage[] => {
   // Handle string content - always returns single message
   if (typeof message.content === "string") {
     return message.role === "user"
-      ? vscode.LanguageModelChatMessage.User(message.content)
-      : vscode.LanguageModelChatMessage.Assistant(message.content);
+      ? LanguageModelChatMessage.User(message.content)
+      : LanguageModelChatMessage.Assistant(message.content);
   }
 
   // Handle array content
-  const hasMedia = hasMediaBlocks(message.content);
-  const textContent = convertContentToText(message.content);
+  const contentParts = convertContentToVSCodeParts(message.content);
 
   // Create the message
   const vsCodeMessage =
     message.role === "user"
-      ? vscode.LanguageModelChatMessage.User(textContent)
-      : vscode.LanguageModelChatMessage.Assistant(textContent);
+      ? LanguageModelChatMessage.User(
+          contentParts as Array<
+            LanguageModelTextPart | LanguageModelToolResultPart
+          >,
+        )
+      : LanguageModelChatMessage.Assistant(
+          contentParts as Array<
+            LanguageModelTextPart | LanguageModelToolCallPart
+          >,
+        );
 
-  // Return single message if no media, array if has media
-  return hasMedia ? [vsCodeMessage] : vsCodeMessage;
-}
+  return vsCodeMessage;
+};
 
 /**
  * Convert an array of Anthropic MessageParams to VS Code LanguageModelChatMessages
@@ -94,10 +167,10 @@ export function convertAnthropicMessageToVSCode(
  * @param messages - Array of Anthropic MessageParam
  * @returns Flat array of VS Code LanguageModelChatMessage
  */
-export function convertAnthropicMessagesToVSCode(
+export const convertAnthropicMessagesToVSCode = (
   messages: Array<Anthropic.Messages.MessageParam>,
-): vscode.LanguageModelChatMessage[] {
-  const results: vscode.LanguageModelChatMessage[] = [];
+): LanguageModelChatMessage[] => {
+  const results: LanguageModelChatMessage[] = [];
 
   for (const message of messages) {
     const converted = convertAnthropicMessageToVSCode(message);
@@ -109,7 +182,7 @@ export function convertAnthropicMessagesToVSCode(
   }
 
   return results;
-}
+};
 
 /**
  * Convert Anthropic system prompt to VS Code LanguageModelChatMessage array
@@ -118,19 +191,84 @@ export function convertAnthropicMessagesToVSCode(
  * @param system - Anthropic system prompt (string or array of TextBlockParam)
  * @returns Array of VS Code LanguageModelChatMessage for system content
  */
-export function convertAnthropicSystemToVSCode(
+export const convertAnthropicSystemToVSCode = (
   system?: string | Array<Anthropic.Messages.TextBlockParam>,
-): vscode.LanguageModelChatMessage[] {
+): LanguageModelChatMessage[] => {
   if (!system) {
     return [];
   }
 
   if (typeof system === "string") {
-    return [vscode.LanguageModelChatMessage.Assistant(system)];
+    return [LanguageModelChatMessage.Assistant(system)];
   }
 
   // Handle array of TextBlockParam
-  return system.map((block) =>
-    vscode.LanguageModelChatMessage.Assistant(block.text),
-  );
-}
+  return system.map((block) => LanguageModelChatMessage.Assistant(block.text));
+};
+
+export const convertAnthropicToolToVSCode = (
+  tools?: Anthropic.Messages.ToolUnion[],
+): LanguageModelChatTool[] | undefined =>
+  tools
+    ? tools.map((tool) => {
+        if (tool.name === "bash") {
+          return {
+            name: tool.name,
+            description: "ToolBash20250124",
+            inputSchema: tool,
+          };
+        } else if (tool.name === "str_replace_editor") {
+          return {
+            name: tool.name,
+            description: "ToolTextEditor20250124",
+            inputSchema: tool,
+          };
+        } else if (tool.name === "str_replace_based_edit_tool") {
+          return {
+            name: tool.name,
+            description: "TextEditor20250429",
+            inputSchema: tool,
+          };
+        } else if (tool.name === "web_search") {
+          // Github Copilot API does not support built-in web search tool
+          return {
+            name: tool.name,
+            description: "WebSearchTool20250305",
+            inputSchema: {
+              ...tool,
+              type: "object",
+            },
+          };
+        }
+
+        const t = tool as Anthropic.Messages.Tool;
+        return {
+          name: t.name,
+          description: t.description || "",
+          inputSchema: t.input_schema,
+        };
+      })
+    : undefined;
+
+export const convertAnthropicToolChoiceToVSCode = (
+  toolChoice?: Anthropic.Messages.ToolChoice,
+): LanguageModelChatToolMode | undefined => {
+  if (!toolChoice) {
+    return undefined;
+  }
+
+  switch (toolChoice.type) {
+    case "auto":
+      return LanguageModelChatToolMode.Auto;
+
+    case "any":
+      return LanguageModelChatToolMode.Required;
+
+    case "tool":
+      return LanguageModelChatToolMode.Required;
+
+    case "none":
+    default:
+      return undefined;
+  }
+};

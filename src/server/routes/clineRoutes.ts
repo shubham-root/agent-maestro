@@ -32,14 +32,6 @@ const clineTaskRoute = createRoute({
       },
       description: "Task created successfully",
     },
-    400: {
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-      description: "Bad request - invalid input",
-    },
     500: {
       content: {
         "application/json": {
@@ -59,10 +51,6 @@ export function registerClineRoutes(
   app.openapi(clineTaskRoute, async (c) => {
     try {
       const { text, images } = await c.req.json();
-
-      if (!text || text.trim() === "") {
-        return c.json({ message: "Task description is required" }, 400);
-      }
 
       if (!controller.clineAdapter.isActive) {
         return c.json({ message: "Cline extension is not available" }, 500);
