@@ -178,12 +178,28 @@ export const AnthropicCountTokensResponseSchema = z.object({
 // ============================================================================
 // CLINE API SCHEMAS
 // ============================================================================
+export const imagesDataUriErrorMessage =
+  "Each image must be a valid data URI in format 'data:image/{fileType};base64,...'";
+export const ImagesDataUriSchema = z
+  .array(
+    z
+      .string()
+      .refine(
+        (value) =>
+          value.startsWith("data:image/") && value.includes(";base64,"),
+        {
+          error: imagesDataUriErrorMessage,
+        },
+      ),
+  )
+  .optional()
+  .describe(
+    'Optional array of image data URIs (e.g., "data:image/webp;base64,...").',
+  );
+
 export const ClineMessageRequestSchema = z.object({
   text: z.string().min(1).describe("The task description to execute"),
-  images: z
-    .array(z.string())
-    .optional()
-    .describe("Optional array of base64-encoded images"),
+  images: ImagesDataUriSchema,
 });
 
 export const ClineTaskResponseSchema = z.object({
@@ -342,10 +358,7 @@ export const ToolsResponseSchema = z
 // ============================================================================
 export const RooMessageRequestSchema = z.object({
   text: z.string().min(1).describe("The task query text"),
-  images: z
-    .array(z.string())
-    .optional()
-    .describe("Optional array of image URLs or base64 encoded images"),
+  images: ImagesDataUriSchema,
   configuration: z
     .record(z.string(), z.any())
     .optional()

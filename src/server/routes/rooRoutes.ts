@@ -11,6 +11,8 @@ import {
 } from "../../utils/mcpConfig";
 import {
   ErrorResponseSchema,
+  ImagesDataUriSchema,
+  imagesDataUriErrorMessage,
   RooMessageRequestSchema,
   RooActionRequestSchema,
   HistoryItemSchema,
@@ -389,6 +391,11 @@ export function registerRooRoutes(
       const { text, images, configuration, newTab, extensionId } =
         await c.req.json();
 
+      const parsedImages = ImagesDataUriSchema.safeParse(images);
+      if (!parsedImages.success) {
+        return c.json({ message: imagesDataUriErrorMessage }, 400);
+      }
+
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
         return c.json({ message: "RooCode extension is not available" }, 500);
@@ -436,6 +443,11 @@ export function registerRooRoutes(
     try {
       const { taskId } = c.req.param();
       const { text, images, extensionId } = await c.req.json();
+
+      const parsedImages = ImagesDataUriSchema.safeParse(images);
+      if (!parsedImages.success) {
+        return c.json({ message: imagesDataUriErrorMessage }, 400);
+      }
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
