@@ -708,27 +708,6 @@ export function registerRooRoutes(
   controller: ExtensionController,
   context?: vscode.ExtensionContext,
 ) {
-  // Debug logging to verify profile routes are being registered
-  logger.info("Registering RooCode routes...");
-
-  // Log the profile route definitions to ensure they exist
-  const profileRoutes = [
-    { name: "listProfilesRoute", route: listProfilesRoute },
-    { name: "getProfileRoute", route: getProfileRoute },
-    { name: "createProfileRoute", route: createProfileRoute },
-    { name: "updateProfileRoute", route: updateProfileRoute },
-    { name: "deleteProfileRoute", route: deleteProfileRoute },
-    { name: "getActiveProfileRoute", route: getActiveProfileRoute },
-    { name: "setActiveProfileRoute", route: setActiveProfileRoute },
-  ];
-
-  profileRoutes.forEach(({ name, route }) => {
-    if (route) {
-      logger.info(`Profile route ${name} is defined with path: ${route.path}`);
-    } else {
-      logger.error(`Profile route ${name} is NOT defined!`);
-    }
-  });
   // POST /api/v1/roo/task - Create new RooCode task with SSE stream
   app.openapi(createRooTaskRoute, async (c) => {
     try {
@@ -1050,7 +1029,6 @@ export function registerRooRoutes(
   });
 
   // GET /api/v1/roo/profiles - List all profiles
-  logger.info("Registering GET /roo/profiles route");
   app.openapi(listProfilesRoute, async (c) => {
     try {
       const { extensionId } = c.req.query();
@@ -1096,7 +1074,6 @@ export function registerRooRoutes(
   });
 
   // GET /api/v1/roo/profiles/:name - Get specific profile
-  logger.info("Registering GET /roo/profiles/:name route");
   app.openapi(getProfileRoute, async (c) => {
     try {
       const { name } = c.req.param();
@@ -1162,7 +1139,6 @@ export function registerRooRoutes(
   });
 
   // POST /api/v1/roo/profiles - Create new profile
-  logger.info("Registering POST /roo/profiles route");
   app.openapi(createProfileRoute, async (c) => {
     try {
       const { name, profile, activate, extensionId } = await c.req.json();
@@ -1201,7 +1177,6 @@ export function registerRooRoutes(
   });
 
   // PUT /api/v1/roo/profiles/:name - Update profile
-  logger.info("Registering PUT /roo/profiles/:name route");
   app.openapi(updateProfileRoute, async (c) => {
     try {
       const { name } = c.req.param();
@@ -1241,7 +1216,6 @@ export function registerRooRoutes(
   });
 
   // DELETE /api/v1/roo/profiles/:name - Delete profile
-  logger.info("Registering DELETE /roo/profiles/:name route");
   app.openapi(deleteProfileRoute, async (c) => {
     try {
       const { name } = c.req.param();
@@ -1284,7 +1258,6 @@ export function registerRooRoutes(
   });
 
   // GET /api/v1/roo/profiles/active - Get active profile
-  logger.info("Registering GET /roo/profiles/active route");
   app.openapi(getActiveProfileRoute, async (c) => {
     try {
       const { extensionId } = c.req.query();
@@ -1324,7 +1297,6 @@ export function registerRooRoutes(
   });
 
   // PUT /api/v1/roo/profiles/active/:name - Set active profile
-  logger.info("Registering PUT /roo/profiles/active/:name route");
   app.openapi(setActiveProfileRoute, async (c) => {
     try {
       const { name } = c.req.param();
