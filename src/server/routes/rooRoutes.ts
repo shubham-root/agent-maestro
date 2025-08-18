@@ -388,27 +388,34 @@ const installMcpConfigRoute = createRoute({
 
 // Profile Management Routes
 
-// 1. GET /roo/profiles - List all profiles
+// GET /roo/profiles - List all profiles or get active profile
 const listProfilesRoute = createRoute({
   method: "get",
   path: "/roo/profiles",
   tags: ["Configuration"],
-  summary: "List all configuration profiles",
+  summary: "List configuration profiles or get active profile",
   description:
-    "Retrieves all available configuration profiles with their basic information",
+    "Retrieves configuration profiles. Use state=all for all profiles, state=active for active profile only",
   request: {
     query: z.object({
       extensionId: z.string().optional(),
+      state: z.enum(["all", "active"]).optional().default("all"),
     }),
   },
   responses: {
     200: {
       content: {
         "application/json": {
-          schema: ProfileListResponseSchema,
+          schema: z.union([
+            ProfileListResponseSchema,
+            z.object({
+              name: z.string().optional(),
+              profile: ProviderSettingsEntrySchema.optional(),
+            }),
+          ]),
         },
       },
-      description: "List of profiles retrieved successfully",
+      description: "Profiles or active profile retrieved successfully",
     },
     500: {
       content: {
@@ -421,7 +428,7 @@ const listProfilesRoute = createRoute({
   },
 });
 
-// 2. GET /roo/profiles/:name - Get specific profile
+// GET /roo/profiles/:name - Get specific profile
 const getProfileRoute = createRoute({
   method: "get",
   path: "/roo/profiles/{name}",
@@ -464,7 +471,7 @@ const getProfileRoute = createRoute({
   },
 });
 
-// 3. POST /roo/profiles - Create new profile
+// POST /roo/profiles - Create new profile
 const createProfileRoute = createRoute({
   method: "post",
   path: "/roo/profiles",
@@ -513,7 +520,7 @@ const createProfileRoute = createRoute({
   },
 });
 
-// 4. PUT /roo/profiles/:name - Update profile
+// PUT /roo/profiles/:name - Update profile
 const updateProfileRoute = createRoute({
   method: "put",
   path: "/roo/profiles/{name}",
@@ -565,7 +572,7 @@ const updateProfileRoute = createRoute({
   },
 });
 
-// 5. DELETE /roo/profiles/:name - Delete profile
+//DELETE /roo/profiles/:name - Delete profile
 const deleteProfileRoute = createRoute({
   method: "delete",
   path: "/roo/profiles/{name}",
@@ -618,42 +625,7 @@ const deleteProfileRoute = createRoute({
   },
 });
 
-// 6. GET /roo/profiles/active - Get active profile
-const getActiveProfileRoute = createRoute({
-  method: "get",
-  path: "/roo/profiles/active",
-  tags: ["Configuration"],
-  summary: "Get the currently active profile",
-  description: "Retrieves the name and details of the currently active profile",
-  request: {
-    query: z.object({
-      extensionId: z.string().optional(),
-    }),
-  },
-  responses: {
-    200: {
-      content: {
-        "application/json": {
-          schema: z.object({
-            name: z.string().optional(),
-            profile: ProviderSettingsEntrySchema.optional(),
-          }),
-        },
-      },
-      description: "Active profile retrieved successfully",
-    },
-    500: {
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-      description: "Internal server error",
-    },
-  },
-});
-
-// 7. PUT /roo/profiles/active/:name - Set active profile
+// PUT /roo/profiles/active/:name - Set active profile
 const setActiveProfileRoute = createRoute({
   method: "put",
   path: "/roo/profiles/active/{name}",
@@ -721,7 +693,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       return streamSSE(c, async (stream) => {
@@ -774,7 +749,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       // Check if task exists in active tasks or history
@@ -833,7 +811,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       // Check if task exists in active tasks or history
@@ -914,7 +895,10 @@ export function registerRooRoutes(
       const adapter = controller.getRooAdapter(extensionId);
 
       if (!adapter) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       return c.json(
@@ -941,7 +925,10 @@ export function registerRooRoutes(
       const adapter = controller.getRooAdapter(extensionId);
 
       if (!adapter) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       const taskData = await adapter.getTaskWithId(taskId);
@@ -1028,18 +1015,46 @@ export function registerRooRoutes(
     }
   });
 
-  // GET /api/v1/roo/profiles - List all profiles
+  // GET /api/v1/roo/profiles - List all profiles or get active profile
   app.openapi(listProfilesRoute, async (c) => {
     try {
-      const { extensionId } = c.req.query();
+      const { extensionId, state } = c.req.query();
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
-      const profileNames = adapter.getProfiles();
       const activeProfileName = adapter.getActiveProfile();
+
+      // Handle state=active - return only active profile
+      if (state === "active") {
+        if (!activeProfileName) {
+          return c.json(
+            {
+              name: undefined,
+              profile: undefined,
+            },
+            200,
+          );
+        }
+
+        const profileEntry = adapter.getProfileEntry(activeProfileName);
+
+        return c.json(
+          {
+            name: activeProfileName,
+            profile: profileEntry,
+          },
+          200,
+        );
+      }
+
+      // Handle state=all (default) - return all profiles
+      const profileNames = adapter.getProfiles();
 
       // Get full profile details for each profile
       const profiles = profileNames.map((name) => {
@@ -1081,7 +1096,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       const profileEntry = adapter.getProfileEntry(name);
@@ -1145,7 +1163,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       // Check if profile already exists
@@ -1184,7 +1205,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       // Check if profile exists
@@ -1223,7 +1247,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       // Check if profile exists
@@ -1257,45 +1284,6 @@ export function registerRooRoutes(
     }
   });
 
-  // GET /api/v1/roo/profiles/active - Get active profile
-  app.openapi(getActiveProfileRoute, async (c) => {
-    try {
-      const { extensionId } = c.req.query();
-
-      const adapter = controller.getRooAdapter(extensionId);
-      if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
-      }
-
-      const activeProfileName = adapter.getActiveProfile();
-
-      if (!activeProfileName) {
-        return c.json(
-          {
-            name: undefined,
-            profile: undefined,
-          },
-          200,
-        );
-      }
-
-      const profileEntry = adapter.getProfileEntry(activeProfileName);
-
-      return c.json(
-        {
-          name: activeProfileName,
-          profile: profileEntry,
-        },
-        200,
-      );
-    } catch (error) {
-      logger.error("Error getting active profile:", error);
-      const message =
-        error instanceof Error ? error.message : "Unknown error occurred";
-      return c.json({ message }, 500);
-    }
-  });
-
   // PUT /api/v1/roo/profiles/active/:name - Set active profile
   app.openapi(setActiveProfileRoute, async (c) => {
     try {
@@ -1304,7 +1292,10 @@ export function registerRooRoutes(
 
       const adapter = controller.getRooAdapter(extensionId);
       if (!adapter?.isActive) {
-        return c.json({ message: "RooCode extension is not available" }, 500);
+        return c.json(
+          { message: `RooCode extension ${extensionId} is not available` },
+          500,
+        );
       }
 
       // Check if profile exists
