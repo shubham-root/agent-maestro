@@ -10,6 +10,10 @@ import {
   getAvailableExtensions,
 } from "../../utils/mcpConfig";
 import {
+  checkRooCodeExtensionStatus,
+  ensureRooCodeExtensionActive,
+} from "../middleware/rooExtensionMiddleware";
+import {
   CreateProfileRequestSchema,
   ErrorResponseSchema,
   HistoryItemSchema,
@@ -680,6 +684,13 @@ export function registerRooRoutes(
   controller: ExtensionController,
   context?: vscode.ExtensionContext,
 ) {
+  // Apply middleware to all /roo routes that need extension activation
+  app.use("/roo/task", ensureRooCodeExtensionActive);
+  app.use("/roo/task/*", ensureRooCodeExtensionActive);
+
+  // Apply read-only middleware to routes that just need to check status
+  app.use("/roo/tasks", checkRooCodeExtensionStatus);
+
   // POST /api/v1/roo/task - Create new RooCode task with SSE stream
   app.openapi(createRooTaskRoute, async (c) => {
     try {
