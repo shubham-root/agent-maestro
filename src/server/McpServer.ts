@@ -1,11 +1,11 @@
 // @ts-expect-error "TS1479: The current file is a CommonJS module"
 import { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { logger } from "../utils/logger";
-import { analyzePortUsage } from "../utils/portUtils";
 import { ExtensionController } from "../core/controller";
 import { McpTaskManager } from "../core/McpTaskManager";
 import { DEFAULT_CONFIG } from "../utils/config";
+import { logger } from "../utils/logger";
+import { analyzePortUsage } from "../utils/portUtils";
 
 // Input schema for the Execute_Roo_Tasks tool
 const defaultMaxConcurrency = 5;
@@ -149,7 +149,7 @@ export class McpServer {
       this.port = actualPort;
       this.isRunning = true;
 
-      logger.info(`MCP Server started on http://127.0.0.1:${this.port}`);
+      logger.info(`MCP Server started on http://0.0.0.0:${this.port}`);
       logger.info(`MCP Server is ready to accept tool calls`);
 
       // TODO: Add MCP server info to global state
@@ -208,7 +208,7 @@ export class McpServer {
     return {
       isRunning: this.isRunning,
       port: this.port,
-      url: `http://127.0.0.1:${this.port}`,
+      url: `http://0.0.0.0:${this.port}`,
     };
   }
 

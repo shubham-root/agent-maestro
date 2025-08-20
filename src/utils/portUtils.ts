@@ -1,5 +1,5 @@
-import * as net from "net";
 import * as http from "http";
+import * as net from "net";
 import { logger } from "./logger";
 
 /**
@@ -9,7 +9,7 @@ export function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = net.createServer();
 
-    server.listen(port, "127.0.0.1", () => {
+    server.listen(port, "0.0.0.0", () => {
       server.close(() => {
         resolve(true);
       });
@@ -27,7 +27,7 @@ export function isPortAvailable(port: number): Promise<boolean> {
 export function isOurProxyServer(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const req = http.get(
-      `http://127.0.0.1:${port}/api/v1/info`,
+      `http://0.0.0.0:${port}/api/v1/info`,
       {
         timeout: 2000,
       },
