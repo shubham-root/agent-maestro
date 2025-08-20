@@ -23,12 +23,54 @@ interface ContentBlock {
   toolUse?: vscode.LanguageModelToolCallPart;
 }
 
+const convertAnthropicModelToVSCodeModel = (modelId: string): string => {
+  // Remove date suffix (pattern: -YYYYMMDD at the end) for accurate pattern matching
+  const withoutDate = modelId.replace(/-\d{8}$/, "");
+
+  // Handle different model patterns
+  if (withoutDate === "claude-opus-4-1") {
+    return "claude-opus-41";
+  }
+
+  if (withoutDate === "claude-opus-4") {
+    return "claude-opus-4";
+  }
+
+  if (withoutDate === "claude-sonnet-4") {
+    return "claude-sonnet-4";
+  }
+
+  // Handle claude-3-5-haiku -> claude-3.5-sonnet
+  if (withoutDate === "claude-3-5-haiku") {
+    return "claude-3.5-sonnet";
+  }
+
+  // Handle claude-3-haiku -> claude-3.5-sonnet
+  if (withoutDate === "claude-3-haiku") {
+    return "claude-3.5-sonnet";
+  }
+
+  // If no pattern matches or claude-3-7 models, return a default model ID as fallback
+  logger.warn(
+    `No matching model found for ID: ${modelId}. Falling back to default model ID "claude-3.5-sonnet".`,
+  );
+  return "claude-3.5-sonnet";
+};
+
 const getChatModelClient = async (modelId: string) => {
+  // Convert official Anthropic API model ID to VSCode LM API model ID
+  const vsCodeModelId = convertAnthropicModelToVSCodeModel(modelId);
+
   const models = await vscode.lm.selectChatModels({});
-  const client = models.find((m) => m.id === modelId);
+  const client = models
+    // Exclude Claude 3.7 models due to model_not_supported error
+    .filter((m) => !m.id.includes("claude-3.7"))
+    .find((m) => m.id === vsCodeModelId);
 
   if (!client) {
-    logger.error(`No VS Code LM model available for model ID: ${modelId}`);
+    logger.error(
+      `No VS Code LM model available for model ID: ${modelId} (converted to: ${vsCodeModelId})`,
+    );
     return {
       error: {
         error: {
@@ -98,13 +140,7 @@ const v1MessagesTokenCountController = async (c: Context) => {
       200,
     );
   } catch (error) {
-    logger.error(
-      JSON.stringify({
-        message: (error as Error).message,
-        stack: (error as Error).stack,
-        name: (error as Error).name,
-      }),
-    );
+    logger.error("Anthropic API token count request failed:", error);
     return c.json(
       {
         error: {
@@ -133,7 +169,10 @@ const v1MessagesController = async (c: Context): Promise<Response> => {
       ...msgCreateParams
     } = requestBody;
 
-    // logger.info(JSON.stringify(requestBody, null, 2));
+    logger.debug(
+      "/v1/messages payload: ",
+      JSON.stringify(requestBody, null, 2),
+    );
 
     // 1. Check if selected model is available in VS Code LM API
     const { client, error: clientError } = await getChatModelClient(modelId);
@@ -143,7 +182,7 @@ const v1MessagesController = async (c: Context): Promise<Response> => {
     }
 
     logger.info(
-      `Selected model: ${client.name} (${client.vendor}/${client.family})`,
+      `Received /v1/messages call with selected model: ${client.name} (${client.vendor}/${client.family})`,
     );
 
     // 2. Map Anthropic messages to VS Code LM API messages and count input tokens
@@ -201,6 +240,8 @@ const v1MessagesController = async (c: Context): Promise<Response> => {
         },
         // container: null,
       };
+
+      logger.debug("/v1/messages response: ", JSON.stringify(resp, null, 2));
 
       return c.json(resp);
     }
@@ -304,8 +345,8 @@ const v1MessagesController = async (c: Context): Promise<Response> => {
             }
           }
 
-          logger.info(
-            "Content blocks: ",
+          logger.debug(
+            "/v1/messages streamed content block responses: ",
             JSON.stringify(contentBlocks, null, 2),
           );
 
@@ -346,17 +387,11 @@ const v1MessagesController = async (c: Context): Promise<Response> => {
         }
       },
       async (error, _stream) => {
-        logger.error(JSON.stringify(error, null, 2));
+        logger.error("Stream error occurred:", error);
       },
     );
   } catch (error) {
-    logger.error(
-      JSON.stringify({
-        message: (error as Error).message,
-        stack: (error as Error).stack,
-        name: (error as Error).name,
-      }),
-    );
+    logger.error("Anthropic API /v1/messages request failed:", error);
     return c.json(
       {
         error: {
